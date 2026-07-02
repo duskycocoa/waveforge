@@ -1,0 +1,6 @@
+{
+  "name": "WaveForge",
+  "description": "A client-side music toolkit with a MIDI piano roll viewer, audio format converter, and audio trimmer in a dark glassmorphic UI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

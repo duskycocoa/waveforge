@@ -1,0 +1,4183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WaveForge - Client-Side Music Toolkit</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- MIDI & Tone.js CDNs -->
+  <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi/build/Midi.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tone@14.7.77/build/Tone.js"></script>
+  <!-- FFmpeg.wasm CDN -->
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Space Grotesk', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+
+    :root {
+      --accent-violet: #a78bfa;
+      --accent-cyan: #38bdf8;
+      --accent-teal: #2dd4bf;
+      --glass-bg: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.12);
+      --glass-blur: blur(20px);
+    }
+
+    body {
+      background: linear-gradient(135deg, #0a0a1a 0%, #12082a 50%, #0d1a2e 100%);
+      background-attachment: fixed;
+      font-family: 'Inter', sans-serif;
+      color: #ffffff;
+      overflow-x: hidden;
+      margin: 0;
+      padding: 0;
+    }
+
+    .space-grotesk {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .glass-panel {
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+    }
+
+    .accent-gradient {
+      background: linear-gradient(90deg, var(--accent-violet), var(--accent-cyan));
+    }
+
+    .accent-text {
+      background: linear-gradient(90deg, var(--accent-violet), var(--accent-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .pill-button {
+      border-radius: 999px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .pill-button:hover {
+      transform: scale(1.03);
+      box-shadow: 0 0 20px rgba(167, 139, 250, 0.4);
+    }
+
+    .nav-tab {
+      position: relative;
+      padding: 0.5rem 1.5rem;
+      transition: all 0.2s;
+    }
+
+    .nav-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -12px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent-violet), var(--accent-cyan));
+    }
+
+    .track-row {
+      transition: background 0.2s;
+    }
+
+    .track-row:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #2a2a4a;
+      border-radius: 10px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-violet);
+    }
+
+    .btn-primary {
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent-violet), var(--accent-cyan));
+      color: #ffffff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 0 20px rgba(167, 139, 250, 0.5);
+      transform: scale(1.03);
+    }
+
+    .btn-secondary {
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: scale(1.03);
+    }
+
+    .glass-input {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #ffffff;
+    }
+
+    .glass-input:focus {
+      outline: none;
+      border-color: var(--accent-violet);
+      box-shadow: 0 0 10px rgba(167, 139, 250, 0.3);
+    }
+
+    input[type="range"].accent-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(0, 0, 0, 0.3);
+      height: 6px;
+      border-radius: 3px;
+    }
+
+    input[type="range"].accent-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
+    }
+
+    .drag-zone {
+      border: 2px dashed rgba(167, 139, 250, 0.4);
+      background: rgba(255, 255, 255, 0.02);
+      transition: all 0.3s ease;
+      border-radius: 12px;
+    }
+
+    .drag-zone.dragover {
+      border-style: solid;
+      border-color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.05);
+      animation: glowPulse 1.5s infinite alternate;
+    }
+
+    @keyframes glowPulse {
+      0% { box-shadow: 0 0 5px rgba(56, 189, 248, 0.2); border-color: var(--accent-violet); }
+      100% { box-shadow: 0 0 20px rgba(56, 189, 248, 0.6); border-color: var(--accent-cyan); }
+    }
+
+    .toast-container {
+      position: fixed;
+      top: 80px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      pointer-events: none;
+    }
+
+    .toast {
+      pointer-events: auto;
+      background: rgba(10, 10, 26, 0.85);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border-radius: 12px;
+      padding: 12px 18px;
+      min-width: 280px;
+      color: white;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      transform: translateX(120%);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .toast.show { transform: translateX(0); }
+    .toast-success { border: 1px solid rgba(45, 212, 191, 0.4); }
+    .toast-error { border: 1px solid rgba(239, 68, 68, 0.4); }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(10, 10, 26, 0.5); }
+    ::-webkit-scrollbar-thumb { background: var(--accent-violet); border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen relative pb-12">
+  <!-- Glowing Background Orbs -->
+  <div class="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[#a78bfa]/10 blur-[120px] pointer-events-none z-[-1]"></div>
+  <div class="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-[#38bdf8]/10 blur-[120px] pointer-events-none z-[-1]"></div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Navigation Bar -->
+  <nav class="fixed top-0 left-0 w-full h-16 glass-panel border-t-0 border-x-0 rounded-none z-50 flex items-center justify-between px-8">
+    <div class="flex items-center space-x-3">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#a78bfa] to-[#38bdf8] flex items-center justify-center shadow-lg shadow-[#a78bfa]/20">
+        <i data-lucide="music" class="text-white w-5 h-5"></i>
+      </div>
+      <span class="space-grotesk font-display font-bold text-2xl accent-text">WaveForge</span>
+    </div>
+
+    <!-- Tab Selection -->
+    <div class="flex space-x-8 text-sm font-medium">
+      <button onclick="switchTab('midi')" id="tab-midi" class="nav-tab active space-grotesk font-display font-semibold text-white">MIDI Viewer</button>
+      <button onclick="switchTab('converter')" id="tab-converter" class="nav-tab opacity-50 space-grotesk font-display font-semibold text-white">Converter</button>
+      <button onclick="switchTab('snipper')" id="tab-snipper" class="nav-tab opacity-50 space-grotesk font-display font-semibold text-white">Snipper</button>
+    </div>
+
+    <div class="flex items-center space-x-4">
+      <div class="hidden sm:flex items-center space-x-2 text-xs text-white/60 font-mono">
+        <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+        <span>Engine Ready</span>
+      </div>
+
+      <!-- Theme Switcher Button & Dropdown Container -->
+      <div class="relative inline-block text-left">
+        <button onclick="toggleThemeDropdown(event)" id="theme-btn" class="pill-button px-3 py-1.5 text-xs font-semibold flex items-center space-x-1.5 border border-white/10 bg-white/5 hover:bg-white/10 text-white">
+          <i data-lucide="palette" class="w-4 h-4"></i>
+          <span>Theme</span>
+        </button>
+
+        <!-- Theme Picker Panel Dropdown -->
+        <div id="theme-dropdown" class="hidden absolute right-0 mt-2 w-[340px] glass-panel bg-black/90 backdrop-blur-2xl border border-white/15 p-4 rounded-xl shadow-2xl z-[999]">
+          <h4 class="space-grotesk font-display font-bold text-xs uppercase tracking-wider text-white/80 mb-3 flex items-center space-x-1.5">
+            <i data-lucide="sparkles" class="w-4 h-4 text-[var(--accent-primary)]"></i>
+            <span>Select System Theme</span>
+          </h4>
+          <div class="grid grid-cols-2 gap-2" id="theme-cards-container">
+            <!-- Rendered dynamically in JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content Layout -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-24">
+
+    <!-- MODULE 1: MIDI VIEWER -->
+    <section id="section-midi" class="space-y-6">
+      <div class="glass-panel p-6">
+        <h2 class="font-display font-bold text-2xl mb-2 flex items-center space-x-2 bg-gradient-to-r from-[#a78bfa] to-[#38bdf8] bg-clip-text text-transparent">
+          <i data-lucide="music-4" class="w-6 h-6 text-[#a78bfa]"></i>
+          <span>MIDI Piano Roll Viewer & Synthesizer</span>
+        </h2>
+        <p class="text-white/60 text-sm mb-6">Drop any standard MIDI (.mid) file below to visualize active tracks, mute or solo them, change tempo, and render/synthesize straight to audio.</p>
+
+        <!-- Drop Zone -->
+        <div id="midi-drop-zone" class="drag-zone p-8 flex flex-col items-center justify-center text-center cursor-pointer mb-6" onclick="document.getElementById('midi-file-input').click()">
+          <i data-lucide="upload-cloud" class="w-12 h-12 text-[#a78bfa] mb-3"></i>
+          <p class="font-display font-semibold text-white/80">Drag & drop your MIDI file here or <span class="text-[#38bdf8] underline">Browse</span></p>
+          <p class="text-xs text-white/40 mt-1">Accepts .mid, .midi</p>
+          <input type="file" id="midi-file-input" class="hidden" accept=".mid,.midi" onchange="handleMidiFileSelect(event)">
+        </div>
+
+        <!-- MIDI Workspace (Hidden until file loaded) -->
+        <div id="midi-workspace" class="hidden grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <!-- Sidebar / Tracks -->
+          <div class="lg:col-span-1 glass-panel p-4 flex flex-col h-[520px]">
+            <h3 class="space-grotesk font-display text-xs font-bold uppercase tracking-widest text-white/50 mb-4 pb-2 border-b border-white/10">Active Tracks</h3>
+            <div id="midi-tracks-list" class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar"></div>
+            
+            <!-- Collapsible Note Properties Panel -->
+            <div id="note-properties-panel" class="hidden border-t border-white/10 pt-3 mt-3 flex flex-col space-y-2">
+              <h4 class="space-grotesk text-xs font-bold text-white/70 uppercase tracking-widest flex items-center justify-between">
+                <span>Note Properties</span>
+                <button onclick="clearSelection()" class="text-[10px] text-white/40 hover:text-white">Deselect</button>
+              </h4>
+              <div class="grid grid-cols-2 gap-2 text-[11px]">
+                <div>
+                  <span class="text-white/40 block mb-1">Pitch</span>
+                  <input type="text" id="prop-pitch" class="glass-input w-full px-2 py-1 text-center font-mono" onchange="updateSelectedNoteProperties()">
+                </div>
+                <div>
+                  <span class="text-white/40 block mb-1">Start Time</span>
+                  <input type="number" id="prop-start" step="0.001" min="0" class="glass-input w-full px-2 py-1 text-center font-mono" onchange="updateSelectedNoteProperties()">
+                </div>
+                <div>
+                  <span class="text-white/40 block mb-1">Duration</span>
+                  <input type="number" id="prop-duration" step="0.001" min="0.01" class="glass-input w-full px-2 py-1 text-center font-mono" onchange="updateSelectedNoteProperties()">
+                </div>
+                <div>
+                  <span class="text-white/40 block mb-1">Velocity</span>
+                  <input type="range" id="prop-velocity" min="0" max="127" class="accent-slider w-full mt-1" oninput="updateSelectedNoteProperties()">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Piano Roll Canvas Card -->
+          <div class="lg:col-span-3 flex flex-col space-y-4">
+            <div class="glass-panel p-4 relative overflow-hidden flex-1 flex flex-col">
+              <div class="flex items-center justify-between mb-3">
+                <span id="midi-filename-label" class="font-mono text-xs text-[#38bdf8]">No File Loaded</span>
+                <div class="flex items-center space-x-2 text-xs text-white/40 font-mono">
+                  <span id="midi-info-tracks">0 Tracks</span>
+                  <span>•</span>
+                  <span id="midi-info-notes">0 Notes</span>
+                </div>
+              </div>
+
+              <!-- Editor Toolbar -->
+              <div class="flex items-center justify-between gap-2 mb-3 bg-black/20 p-2 rounded-lg border border-white/5">
+                <div class="flex items-center space-x-1.5">
+                  <button onclick="setEditorTool('select')" id="tool-select" class="pill-button px-3 py-1.5 text-xs font-semibold flex items-center space-x-1 bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white">
+                    <i data-lucide="pointer" class="w-3.5 h-3.5"></i>
+                    <span>Select</span>
+                  </button>
+                  <button onclick="setEditorTool('draw')" id="tool-draw" class="pill-button px-3 py-1.5 text-xs font-semibold flex items-center space-x-1 opacity-50 text-white/60">
+                    <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                    <span>Draw</span>
+                  </button>
+                  <button onclick="setEditorTool('erase')" id="tool-erase" class="pill-button px-3 py-1.5 text-xs font-semibold flex items-center space-x-1 opacity-50 text-white/60">
+                    <i data-lucide="eraser" class="w-3.5 h-3.5"></i>
+                    <span>Erase</span>
+                  </button>
+                  <button onclick="setEditorTool('pan')" id="tool-pan" class="pill-button px-3 py-1.5 text-xs font-semibold flex items-center space-x-1 opacity-50 text-white/60">
+                    <i data-lucide="move" class="w-3.5 h-3.5"></i>
+                    <span>Pan</span>
+                  </button>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <!-- Undo/Redo Buttons -->
+                  <div class="flex items-center space-x-1 border-r border-white/10 pr-2 mr-1">
+                    <button id="midi-undo-btn" onclick="undoMidi()" disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-white hover:bg-white/5 transition-all" title="Undo (Ctrl+Z)">
+                      <i data-lucide="undo-2" class="w-4 h-4"></i>
+                    </button>
+                    <button id="midi-redo-btn" onclick="redoMidi()" disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-white hover:bg-white/5 transition-all" title="Redo (Ctrl+Y)">
+                      <i data-lucide="redo-2" class="w-4 h-4"></i>
+                    </button>
+                  </div>
+                  <button onclick="showNewFileModal()" class="pill-button px-3 py-1.5 text-xs font-bold border border-[var(--accent-primary)]/30 bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] flex items-center space-x-1">
+                    <i data-lucide="file-plus-2" class="w-3.5 h-3.5"></i>
+                    <span>New File</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Quantize Collapsible Card -->
+              <div class="glass-panel p-3 mb-3 border border-white/5 bg-black/10 rounded-lg">
+                <button onclick="toggleQuantizePanel()" class="flex items-center justify-between w-full font-display font-bold text-xs uppercase tracking-wider text-white/80 focus:outline-none">
+                  <span class="flex items-center space-x-1.5">
+                    <i data-lucide="grip-vertical" class="w-3.5 h-3.5 text-[var(--accent-primary)]"></i>
+                    <span>Quantize & Humanize</span>
+                  </span>
+                  <i id="quantize-collapse-icon" data-lucide="chevron-down" class="w-4 h-4 transform transition-transform"></i>
+                </button>
+                
+                <div id="quantize-panel-content" class="hidden mt-3 space-y-3 pt-3 border-t border-white/5 text-xs">
+                  <!-- Grid Selector -->
+                  <div class="flex flex-col space-y-1.5">
+                    <span class="text-white/60 text-[10px] font-semibold uppercase">Snap Grid Selection</span>
+                    <div class="flex flex-wrap gap-1" id="quantize-grid-pills">
+                      <button onclick="setQuantizeGrid('1/1')" id="grid-1/1" class="px-2 py-1 bg-white/5 hover:bg-white/10 text-[10px] rounded border border-white/5 text-white/70">1/1</button>
+                      <button onclick="setQuantizeGrid('1/2')" id="grid-1/2" class="px-2 py-1 bg-white/5 hover:bg-white/10 text-[10px] rounded border border-white/5 text-white/70">1/2</button>
+                      <button onclick="setQuantizeGrid('1/4')" id="grid-1/4" class="px-2 py-1 bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-[10px] rounded border border-white/5 font-semibold text-white shadow-sm shadow-accent-primary/20">1/4</button>
+                      <button onclick="setQuantizeGrid('1/8')" id="grid-1/8" class="px-2 py-1 bg-white/5 hover:bg-white/10 text-[10px] rounded border border-white/5 text-white/70">1/8</button>
+                      <button onclick="setQuantizeGrid('1/16')" id="grid-1/16" class="px-2 py-1 bg-white/5 hover:bg-white/10 text-[10px] rounded border border-white/5 text-white/70">1/16</button>
+                      <button onclick="setQuantizeGrid('1/32')" id="grid-1/32" class="px-2 py-1 bg-white/5 hover:bg-white/10 text-[10px] rounded border border-white/5 text-white/70">1/32</button>
+                      <button onclick="setQuantizeGrid('1/64')" id="grid-1/64" class="px-2 py-1 bg-white/5 hover:bg-white/10 text-[10px] rounded border border-white/5 text-white/70">1/64</button>
+                      <button onclick="setQuantizeGrid('1/8T')" id="grid-1/8T" class="px-2 py-1 bg-white/5 hover:bg-white/10 text-[10px] rounded border border-white/5 text-white/70">1/8T</button>
+                      <button onclick="setQuantizeGrid('1/16T')" id="grid-1/16T" class="px-2 py-1 bg-white/5 hover:bg-white/10 text-[10px] rounded border border-white/5 text-white/70">1/16T</button>
+                    </div>
+                  </div>
+                  
+                  <!-- Strength & Target -->
+                  <div class="flex items-center justify-between gap-4">
+                    <div class="flex-1 flex flex-col space-y-1">
+                      <div class="flex justify-between text-[10px] text-white/60 font-semibold uppercase">
+                        <span>Quantize Strength</span>
+                        <span id="quantize-strength-val">100%</span>
+                      </div>
+                      <input type="range" id="quantize-strength" min="0" max="100" value="100" oninput="updateQuantizeStrength(this.value)" class="accent-slider w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    
+                    <div class="flex flex-col space-y-1">
+                      <span class="text-white/60 text-[10px] font-semibold uppercase">Target</span>
+                      <div class="flex bg-black/40 rounded border border-white/10 p-0.5">
+                        <button onclick="setQuantizeTarget('start')" id="target-start" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/10 text-white">Start</button>
+                        <button onclick="setQuantizeTarget('end')" id="target-end" class="px-2 py-0.5 rounded text-[10px] font-semibold text-white/50">End</button>
+                        <button onclick="setQuantizeTarget('both')" id="target-both" class="px-2 py-0.5 rounded text-[10px] font-semibold text-white/50">Both</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Scope & Actions -->
+                  <div class="flex items-center justify-between pt-1 gap-4">
+                    <div class="flex flex-col space-y-1">
+                      <span class="text-white/60 text-[10px] font-semibold uppercase">Scope</span>
+                      <div class="flex bg-black/40 rounded border border-white/10 p-0.5">
+                        <button onclick="setQuantizeScope('selected')" id="scope-selected" class="px-2 py-0.5 rounded text-[10px] font-semibold text-white/50">Selected Only</button>
+                        <button onclick="setQuantizeScope('all')" id="scope-all" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/10 text-white">All Notes</button>
+                      </div>
+                    </div>
+
+                    <div class="flex space-x-2">
+                      <button onclick="applyHumanize()" class="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 font-bold font-display tracking-wide text-[11px] text-white transition-all flex items-center space-x-1">
+                        <i data-lucide="dribbble" class="w-3.5 h-3.5 text-[var(--accent-primary)]"></i>
+                        <span>Humanize</span>
+                      </button>
+                      <button onclick="applyQuantize()" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white font-bold font-display tracking-wide text-[11px] hover:shadow-lg hover:shadow-[var(--glow-color)] transition-all flex items-center space-x-1">
+                        <i data-lucide="align-justify" class="w-3.5 h-3.5"></i>
+                        <span>Quantize</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Zoom Toolbar Row -->
+              <div class="flex items-center justify-between gap-2 mb-2 bg-black/10 p-1.5 rounded-lg border border-white/5 text-xs">
+                <div class="flex items-center space-x-1">
+                  <button onclick="zoomMidi(-20)" class="p-1 rounded bg-white/5 hover:bg-white/10 text-white/70" title="Zoom Out">
+                    <i data-lucide="minus" class="w-3.5 h-3.5"></i>
+                  </button>
+                  <span id="zoom-level-display" class="font-mono text-[11px] text-white/80 px-2 min-w-[50px] text-center">1.0x (100px/s)</span>
+                  <button onclick="zoomMidi(20)" class="p-1 rounded bg-white/5 hover:bg-white/10 text-white/70" title="Zoom In">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                  </button>
+                  <button onclick="zoomFitToWindow()" class="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-white/70 text-[10px] font-semibold">
+                    Fit to Window
+                  </button>
+                  <button onclick="zoomReset100()" class="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-white/70 text-[10px] font-semibold">
+                    100%
+                  </button>
+                </div>
+                
+                <div class="flex items-center space-x-2">
+                  <label class="flex items-center space-x-1.5 cursor-pointer text-[11px] text-white/70">
+                    <input type="checkbox" id="follow-playhead-toggle" checked onchange="toggleFollowPlayhead(this.checked)" class="w-3.5 h-3.5 rounded bg-black/40 border-white/10 text-[var(--accent-primary)] focus:ring-0">
+                    <span>Follow Playhead</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="relative overflow-hidden border border-white/10 rounded-lg bg-black/40 h-[350px]" id="canvas-container">
+                <canvas id="midi-canvas" class="block w-full h-full"></canvas>
+              </div>
+
+              <!-- Horizontal Scrollbar below canvas -->
+              <div id="midi-scrollbar-track" class="relative w-full h-2.5 mt-2 bg-black/30 rounded-full cursor-pointer select-none border border-white/5">
+                <div id="midi-scrollbar-thumb" class="absolute top-0 left-0 h-full bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] rounded-full cursor-grab active:cursor-grabbing transition-all duration-75"></div>
+              </div>
+            </div>
+
+            <!-- Sound Engine Panel -->
+            <div class="glass-panel p-4 flex flex-wrap items-center justify-between gap-4">
+              <div class="flex items-center space-x-3">
+                <i data-lucide="cpu" class="w-5 h-5 text-[#a78bfa]"></i>
+                <div class="text-left">
+                  <h4 class="space-grotesk font-display text-xs font-bold uppercase tracking-wider text-white/70">Sound Engine</h4>
+                  <p class="text-[10px] text-white/40">Select global synth oscillator type or dynamic soundfont sampler</p>
+                </div>
+              </div>
+              <div class="flex items-center space-x-3">
+                <select id="global-synth-select" onchange="changeGlobalSynth(this.value)" class="bg-black/40 border border-white/10 text-xs text-white rounded-lg px-3 py-1.5 outline-none focus:border-[#a78bfa] transition-all">
+                  <option value="tone-synth">Tone.js Synth (Basic)</option>
+                  <option value="tone-amsynth">Tone.js AMSynth (Warm)</option>
+                  <option value="tone-fmsynth">Tone.js FMSynth (Electric)</option>
+                  <option value="tone-pluck">Tone.js PluckSynth (Plucked)</option>
+                  <option value="tone-membrane">Tone.js MembraneSynth (Kick/Perc)</option>
+                  <option value="soundfont-acoustic-grand-piano">Soundfont: Grand Piano</option>
+                  <option value="soundfont-electric-guitar-clean">Soundfont: Clean Guitar</option>
+                  <option value="soundfont-violin">Soundfont: Violin</option>
+                  <option value="soundfont-choir-aahs">Soundfont: Choir</option>
+                  <option value="soundfont-synth-lead-1-square">Soundfont: Synth Lead</option>
+                </select>
+                <button onclick="auditionPreview()" class="pill-button px-4 py-1.5 text-xs font-semibold bg-white/10 hover:bg-white/20 border border-white/10 text-white flex items-center space-x-1.5">
+                  <i data-lucide="headphones" class="w-3.5 h-3.5"></i>
+                  <span>Apply & Preview</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Playback controls -->
+            <div class="glass-panel p-4 flex flex-wrap items-center justify-between gap-4">
+              <div class="flex items-center space-x-2">
+                <button onclick="startMidiPlayback()" id="midi-play-btn" class="w-10 h-10 rounded-full bg-gradient-to-r from-[#a78bfa] to-[#38bdf8] flex items-center justify-center text-white hover:shadow-lg hover:shadow-[#a78bfa]/20 transition-all">
+                  <i data-lucide="play" class="w-5 h-5 fill-white"></i>
+                </button>
+                <button onclick="pauseMidiPlayback()" id="midi-pause-btn" class="hidden w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all">
+                  <i data-lucide="pause" class="w-5 h-5"></i>
+                </button>
+                <button onclick="stopMidiPlayback()" class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/80 hover:bg-white/10 transition-all">
+                  <i data-lucide="square" class="w-4 h-4 fill-white/80"></i>
+                </button>
+                <button onclick="toggleLoop()" id="midi-loop-btn" class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:bg-white/10 transition-all" title="Toggle Loop">
+                  <i data-lucide="repeat" class="w-4 h-4"></i>
+                </button>
+              </div>
+
+              <!-- BPM & Timing -->
+              <div class="flex items-center space-x-6">
+                <div class="flex items-center space-x-2">
+                  <span class="text-xs text-white/40 font-display">BPM</span>
+                  <input type="number" id="midi-bpm-input" min="20" max="300" class="glass-input w-16 px-2 py-1 text-center font-mono text-sm" onchange="changeBpm(this.value)">
+                </div>
+                <div class="text-right">
+                  <span id="midi-time-display" class="font-mono text-sm text-[#38bdf8]">00:00 / 00:00</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Export Section -->
+            <div class="glass-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h4 class="font-display font-semibold text-sm text-white/80">Export Options</h4>
+                <p class="text-xs text-white/40">Download original MIDI file or synthesize MIDI straight into audio (WAV / MP3).</p>
+              </div>
+              <div class="flex items-center space-x-2">
+                <button onclick="exportMidiFile()" class="btn-secondary px-4 py-2 text-xs flex items-center space-x-1.5">
+                  <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                  <span>Export .MID</span>
+                </button>
+                <div class="flex items-center space-x-1.5 bg-black/40 rounded-full border border-white/10 p-1">
+                  <select id="midi-export-track-select" class="bg-transparent text-xs text-white/80 outline-none px-2 py-1 font-display border border-white/5">
+                    <option value="all">All Tracks</option>
+                  </select>
+                  <select id="midi-export-format" class="bg-transparent text-xs text-white/80 outline-none px-2 py-1 font-display">
+                    <option value="wav" class="bg-[#0a0a1a]">WAV (High Res)</option>
+                    <option value="mp3" class="bg-[#0a0a1a]">MP3 (Compressed)</option>
+                  </select>
+                  <button onclick="exportMidiToAudio()" class="btn-primary px-4 py-1.5 text-xs flex items-center space-x-1.5">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                    <span>Synthesize</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODULE 2: AUDIO FORMAT CONVERTER -->
+    <section id="section-converter" class="hidden space-y-6">
+      <div class="glass-panel p-6">
+        <h2 class="font-display font-bold text-2xl mb-2 flex items-center space-x-2 bg-gradient-to-r from-[#a78bfa] to-[#38bdf8] bg-clip-text text-transparent">
+          <i data-lucide="refresh-cw" class="w-6 h-6 text-[#38bdf8]"></i>
+          <span>Audio Format Converter</span>
+        </h2>
+        <p class="text-white/60 text-sm mb-6">Upload any format, inspect details, generate static waveforms using Web Audio, and convert seamlessly to your format of choice.</p>
+
+        <!-- Drop Zone -->
+        <div id="converter-drop-zone" class="drag-zone p-8 flex flex-col items-center justify-center text-center cursor-pointer mb-6" onclick="document.getElementById('converter-file-input').click()">
+          <i data-lucide="file-audio" class="w-12 h-12 text-[#38bdf8] mb-3"></i>
+          <p class="font-display font-semibold text-white/80">Drag & drop your Audio file here or <span class="text-[#38bdf8] underline">Browse</span></p>
+          <p class="text-xs text-white/40 mt-1">Accepts MP3, WAV, OGG, FLAC, AAC, M4A</p>
+          <input type="file" id="converter-file-input" class="hidden" accept="audio/*" onchange="handleConverterFileSelect(event)">
+        </div>
+
+        <div id="converter-workspace" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Column 1: File specs & settings -->
+          <div class="lg:col-span-1 space-y-4 flex flex-col justify-between">
+            <div class="space-y-4">
+              <div class="glass-panel p-4 space-y-4">
+                <h3 class="font-display font-bold text-sm text-white/80 uppercase tracking-wider pb-2 border-b border-white/10">File Specs</h3>
+                <div class="space-y-2 font-mono text-xs">
+                  <div class="flex justify-between"><span class="text-white/40">Name:</span><span id="conv-spec-name" class="text-white/90 truncate max-w-[180px]">file.mp3</span></div>
+                  <div class="flex justify-between"><span class="text-white/40">Size:</span><span id="conv-spec-size" class="text-white/90">0.0 MB</span></div>
+                  <div class="flex justify-between"><span class="text-white/40">Channels:</span><span id="conv-spec-channels" class="text-white/90">Stereo</span></div>
+                  <div class="flex justify-between"><span class="text-white/40">Sample Rate:</span><span id="conv-spec-rate" class="text-white/90">44100 Hz</span></div>
+                </div>
+              </div>
+
+              <!-- Conversion Target Settings -->
+              <div class="glass-panel p-4 space-y-4">
+                <h3 class="font-display font-bold text-sm text-white/80 uppercase tracking-wider pb-2 border-b border-white/10">Target Format</h3>
+                <!-- Format pills -->
+                <div class="grid grid-cols-4 gap-2">
+                  <button onclick="setTargetFormat('mp3')" id="format-pill-mp3" class="px-2 py-1.5 rounded-lg border border-[#38bdf8] bg-[#38bdf8]/10 text-[#38bdf8] text-xs font-semibold text-center font-display animate-pulse">MP3</button>
+                  <button onclick="setTargetFormat('wav')" id="format-pill-wav" class="px-2 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-white text-xs font-semibold text-center font-display">WAV</button>
+                  <button onclick="setTargetFormat('ogg')" id="format-pill-ogg" class="px-2 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-white text-xs font-semibold text-center font-display">OGG</button>
+                  <button onclick="setTargetFormat('flac')" id="format-pill-flac" class="px-2 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-white text-xs font-semibold text-center font-display">FLAC</button>
+                </div>
+
+                <!-- Bitrate selector for lossy -->
+                <div id="bitrate-settings" class="space-y-2">
+                  <label class="text-xs text-white/40 font-display">Bitrate / Quality</label>
+                  <div class="grid grid-cols-4 gap-2">
+                    <button onclick="setTargetBitrate(128)" id="bitrate-pill-128" class="px-1.5 py-1 rounded-md border border-white/10 bg-white/5 text-white/60 text-xs text-center font-mono">128k</button>
+                    <button onclick="setTargetBitrate(192)" id="bitrate-pill-192" class="px-1.5 py-1 rounded-md border border-[#38bdf8] bg-[#38bdf8]/10 text-[#38bdf8] text-xs text-center font-mono">192k</button>
+                    <button onclick="setTargetBitrate(256)" id="bitrate-pill-256" class="px-1.5 py-1 rounded-md border border-white/10 bg-white/5 text-white/60 text-xs text-center font-mono">256k</button>
+                    <button onclick="setTargetBitrate(320)" id="bitrate-pill-320" class="px-1.5 py-1 rounded-md border border-white/10 bg-white/5 text-white/60 text-xs text-center font-mono">320k</button>
+                  </div>
+                </div>
+
+                <div class="pt-2">
+                  <span class="text-xs text-white/40">Estimated output size:</span>
+                  <span id="conv-estimated-size" class="text-xs text-[#2dd4bf] font-mono ml-1">0.0 MB</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 2: Collapsible Effects Rack -->
+          <div class="lg:col-span-1 flex flex-col justify-between">
+            <div class="glass-panel p-4 space-y-4">
+              <div class="flex items-center justify-between border-b border-white/10 pb-2">
+                <button onclick="toggleCollapse('conv-fx-body', 'conv-fx-arrow')" class="flex items-center space-x-2 text-white/85 hover:text-white font-display font-bold text-sm">
+                  <i data-lucide="chevron-down" id="conv-fx-arrow" class="w-4 h-4 transition-transform duration-200"></i>
+                  <span>Effects Rack</span>
+                </button>
+                <div class="flex items-center space-x-2">
+                  <label class="text-[10px] text-white/50 uppercase tracking-wider">Bypass All</label>
+                  <input type="checkbox" id="conv-fx-bypass" onchange="toggleBypassAll(this)" class="w-4 h-4 accent-[#a78bfa]">
+                </div>
+              </div>
+
+              <div id="conv-fx-body" class="space-y-3">
+                <!-- Reverb -->
+                <div class="space-y-1 bg-white/5 p-2.5 rounded-xl border border-white/5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-white/90">Reverb</span>
+                    <input type="checkbox" id="conv-fx-reverb-toggle" onchange="onFxChange(this)" class="w-4 h-4 accent-[#a78bfa]">
+                  </div>
+                  <div class="space-y-1 text-[11px] pt-1">
+                    <div class="flex justify-between text-white/50">
+                      <span>Mix</span>
+                      <span id="conv-fx-reverb-mix-val">30%</span>
+                    </div>
+                    <input type="range" id="conv-fx-reverb-mix" min="0" max="100" value="30" oninput="onFxChange(this)" class="accent-slider w-full">
+                    
+                    <div class="flex justify-between text-white/50 pt-1">
+                      <span>Decay</span>
+                      <span id="conv-fx-reverb-decay-val">1.5s</span>
+                    </div>
+                    <input type="range" id="conv-fx-reverb-decay" min="0.1" max="10" step="0.1" value="1.5" oninput="onFxChange(this)" class="accent-slider w-full">
+                    
+                    <div class="flex justify-between text-white/50 pt-1">
+                      <span>Pre-delay</span>
+                      <span id="conv-fx-reverb-predelay-val">20ms</span>
+                    </div>
+                    <input type="range" id="conv-fx-reverb-predelay" min="0" max="100" value="20" oninput="onFxChange(this)" class="accent-slider w-full">
+                  </div>
+                </div>
+
+                <!-- Delay -->
+                <div class="space-y-1 bg-white/5 p-2.5 rounded-xl border border-white/5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-white/90">Delay</span>
+                    <input type="checkbox" id="conv-fx-delay-toggle" onchange="onFxChange(this)" class="w-4 h-4 accent-[#a78bfa]">
+                  </div>
+                  <div class="space-y-1 text-[11px] pt-1">
+                    <div class="flex justify-between text-white/50">
+                      <span>Mix</span>
+                      <span id="conv-fx-delay-mix-val">30%</span>
+                    </div>
+                    <input type="range" id="conv-fx-delay-mix" min="0" max="100" value="30" oninput="onFxChange(this)" class="accent-slider w-full">
+                    
+                    <div class="flex justify-between text-white/50 pt-1">
+                      <span>Time</span>
+                      <span id="conv-fx-delay-time-val">300ms</span>
+                    </div>
+                    <input type="range" id="conv-fx-delay-time" min="10" max="1000" value="300" oninput="onFxChange(this)" class="accent-slider w-full">
+                    
+                    <div class="flex justify-between text-white/50 pt-1">
+                      <span>Feedback</span>
+                      <span id="conv-fx-delay-feedback-val">40%</span>
+                    </div>
+                    <input type="range" id="conv-fx-delay-feedback" min="0" max="95" value="40" oninput="onFxChange(this)" class="accent-slider w-full">
+                  </div>
+                </div>
+
+                <!-- EQ -->
+                <div class="space-y-1 bg-white/5 p-2.5 rounded-xl border border-white/5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-white/90">3-Band EQ</span>
+                    <input type="checkbox" id="conv-fx-eq-toggle" onchange="onFxChange(this)" class="w-4 h-4 accent-[#a78bfa]">
+                  </div>
+                  <div class="space-y-1 text-[11px] pt-1">
+                    <div class="flex justify-between text-white/50">
+                      <span>Bass (Low Shelf)</span>
+                      <span id="conv-fx-eq-bass-val">0dB</span>
+                    </div>
+                    <input type="range" id="conv-fx-eq-bass" min="-12" max="12" value="0" oninput="onFxChange(this)" class="accent-slider w-full">
+                    
+                    <div class="flex justify-between text-white/50 pt-1">
+                      <span>Mid</span>
+                      <span id="conv-fx-eq-mid-val">0dB</span>
+                    </div>
+                    <input type="range" id="conv-fx-eq-mid" min="-12" max="12" value="0" oninput="onFxChange(this)" class="accent-slider w-full">
+                    
+                    <div class="flex justify-between text-white/50 pt-1">
+                      <span>Treble (High Shelf)</span>
+                      <span id="conv-fx-eq-treble-val">0dB</span>
+                    </div>
+                    <input type="range" id="conv-fx-eq-treble" min="-12" max="12" value="0" oninput="onFxChange(this)" class="accent-slider w-full">
+                  </div>
+                </div>
+
+                <!-- Compressor -->
+                <div class="space-y-1 bg-white/5 p-2.5 rounded-xl border border-white/5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-white/90">Compressor</span>
+                    <input type="checkbox" id="conv-fx-comp-toggle" onchange="onFxChange(this)" class="w-4 h-4 accent-[#a78bfa]">
+                  </div>
+                  <div class="space-y-1 text-[11px] pt-1">
+                    <div class="flex justify-between text-white/50">
+                      <span>Threshold</span>
+                      <span id="conv-fx-comp-thresh-val">-30dB</span>
+                    </div>
+                    <input type="range" id="conv-fx-comp-thresh" min="-60" max="0" value="-30" oninput="onFxChange(this)" class="accent-slider w-full">
+                    
+                    <div class="flex justify-between text-white/50 pt-1">
+                      <span>Ratio</span>
+                      <span id="conv-fx-comp-ratio-val">4</span>
+                    </div>
+                    <input type="range" id="conv-fx-comp-ratio" min="1" max="20" value="4" oninput="onFxChange(this)" class="accent-slider w-full">
+                    
+                    <div class="flex justify-between text-white/50 pt-1">
+                      <span>Attack</span>
+                      <span id="conv-fx-comp-attack-val">20ms</span>
+                    </div>
+                    <input type="range" id="conv-fx-comp-attack" min="1" max="200" value="20" oninput="onFxChange(this)" class="accent-slider w-full">
+
+                    <div class="flex justify-between text-white/50 pt-1">
+                      <span>Release</span>
+                      <span id="conv-fx-comp-release-val">250ms</span>
+                    </div>
+                    <input type="range" id="conv-fx-comp-release" min="10" max="1000" value="250" oninput="onFxChange(this)" class="accent-slider w-full">
+                  </div>
+                </div>
+
+                <!-- VU Level Meter -->
+                <div class="space-y-1 pt-1">
+                  <span class="text-[10px] text-white/40 block font-display">Real-time Level Meter</span>
+                  <div class="h-6 bg-black/40 border border-white/10 rounded-lg overflow-hidden relative">
+                    <canvas id="fx-meter-canvas-conv" class="w-full h-full block"></canvas>
+                  </div>
+                </div>
+
+                <!-- Preview Trigger -->
+                <div class="pt-1 flex">
+                  <button onclick="startFxPreview('converter')" id="conv-fx-preview-btn" class="btn-secondary flex-1 py-1.5 text-xs flex items-center justify-center space-x-1 bg-violet-500/10 border border-violet-500/20 text-[#a78bfa]">
+                    <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                    <span>Preview with FX</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 3: Waveform preview & Action -->
+          <div class="lg:col-span-1 space-y-4 flex flex-col justify-between">
+            <div class="glass-panel p-4 flex-1 flex flex-col justify-between">
+              <div>
+                <span class="font-mono text-xs text-white/40 mb-2 block">Waveform Overview</span>
+                <div class="border border-white/10 rounded-lg bg-black/40 h-[160px] overflow-hidden flex items-center justify-center p-2">
+                  <canvas id="converter-waveform" class="w-full h-full block"></canvas>
+                </div>
+              </div>
+
+              <!-- Convert Area -->
+              <div class="mt-6 space-y-4 text-left">
+                <!-- Active FX Summary -->
+                <div class="bg-black/20 rounded-lg p-2.5 border border-white/5">
+                  <span class="text-[10px] text-white/40 uppercase block mb-1">Processing State</span>
+                  <p id="conv-active-fx-summary" class="text-xs text-[#a78bfa] font-semibold">Active FX: None</p>
+                </div>
+
+                <!-- Progress bar -->
+                <div id="conv-progress-container" class="hidden space-y-1.5">
+                  <div class="flex justify-between text-xs font-mono text-white/60">
+                    <span id="conv-progress-status">Converting...</span>
+                    <span id="conv-progress-percent">0%</span>
+                  </div>
+                  <div class="w-full h-2 bg-black/40 rounded-full overflow-hidden">
+                    <div id="conv-progress-bar" class="w-0 h-full bg-gradient-to-r from-[#38bdf8] to-[#2dd4bf] transition-all duration-100"></div>
+                  </div>
+                </div>
+
+                <!-- Convert / Download Buttons -->
+                <div class="flex items-center space-x-2">
+                  <button onclick="startConversion()" id="conv-btn" class="btn-primary flex-1 py-3 text-sm flex items-center justify-center space-x-2">
+                    <i data-lucide="zap" class="w-4 h-4"></i>
+                    <span>Convert Audio File</span>
+                  </button>
+                  <button onclick="downloadConvertedFile()" id="conv-download-btn" class="hidden btn-primary flex-1 py-3 text-sm bg-gradient-to-r from-[#2dd4bf] to-[#38bdf8] flex items-center justify-center space-x-2">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span id="conv-download-text">Download</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODULE 3: AUDIO SNIPPER / TRIMMER -->
+    <section id="section-snipper" class="hidden space-y-6">
+      <div class="glass-panel p-6">
+        <h2 class="font-display font-bold text-2xl mb-2 flex items-center space-x-2 bg-gradient-to-r from-[#a78bfa] to-[#38bdf8] bg-clip-text text-transparent">
+          <i data-lucide="scissors" class="w-6 h-6 text-[#a78bfa]"></i>
+          <span>Audio Snipper & Trimmer</span>
+        </h2>
+        <p class="text-white/60 text-sm mb-6">Load an audio file, highlight a specific clip with visual region handles, apply professional fades, and export clean loops instantly.</p>
+
+        <!-- Drop Zone -->
+        <div id="snipper-drop-zone" class="drag-zone p-8 flex flex-col items-center justify-center text-center cursor-pointer mb-6" onclick="document.getElementById('snipper-file-input').click()">
+          <i data-lucide="split" class="w-12 h-12 text-[#a78bfa] mb-3"></i>
+          <p class="font-display font-semibold text-white/80">Drag & drop your Audio file here or <span class="text-[#38bdf8] underline">Browse</span></p>
+          <p class="text-xs text-white/40 mt-1">Accepts MP3, WAV, OGG, FLAC</p>
+          <input type="file" id="snipper-file-input" class="hidden" accept="audio/*" onchange="handleSnipperFileSelect(event)">
+        </div>
+
+        <!-- Snipper workspace -->
+        <div id="snipper-workspace" class="hidden space-y-6">
+          <!-- Waveform render container -->
+          <div class="glass-panel p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span id="snipper-file-label" class="font-mono text-xs text-[#a78bfa]">Filename</span>
+              <span id="snipper-time-label" class="font-mono text-xs text-[#38bdf8]">00:00.000 / 00:00.000</span>
+            </div>
+            <!-- Wavesurfer target container -->
+            <div class="border border-white/10 rounded-lg bg-black/40 p-4">
+              <div id="waveform-container" class="relative"></div>
+            </div>
+          </div>
+
+          <!-- Selection details & Playback -->
+          <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Region controls -->
+            <div class="glass-panel p-4 space-y-4 lg:col-span-1">
+              <h3 class="font-display font-bold text-sm text-white/80 uppercase tracking-wider pb-2 border-b border-white/10">Trimming Region</h3>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1">
+                  <span class="text-xs text-white/40 block">Clip Start</span>
+                  <input type="text" id="trim-start-input" class="glass-input w-full px-3 py-2 text-center font-mono text-sm" value="00:00.000" onchange="manualRegionTimeChange()">
+                </div>
+                <div class="space-y-1">
+                  <span class="text-xs text-white/40 block">Clip End</span>
+                  <input type="text" id="trim-end-input" class="glass-input w-full px-3 py-2 text-center font-mono text-sm" value="00:00.000" onchange="manualRegionTimeChange()">
+                </div>
+              </div>
+              <div class="pt-2 text-xs text-white/40 font-mono flex justify-between">
+                <span>Selected Duration:</span>
+                <span id="trim-duration-label" class="text-[#38bdf8]">00:00.000</span>
+              </div>
+            </div>
+
+            <!-- Fades & Options -->
+            <div class="glass-panel p-4 space-y-4 lg:col-span-1">
+              <h3 class="font-display font-bold text-sm text-white/80 uppercase tracking-wider pb-2 border-b border-white/10">Fades & Format</h3>
+              <div class="grid grid-cols-2 gap-4">
+                <!-- Fade In -->
+                <div class="space-y-2">
+                  <div class="flex items-center space-x-2">
+                    <input type="checkbox" id="fade-in-toggle" class="w-4 h-4 accent-[#a78bfa]" onchange="updateFadesDisplay()">
+                    <span class="text-xs text-white/80 font-display">Fade In</span>
+                  </div>
+                  <input type="number" id="fade-in-ms" value="1000" step="100" min="0" class="glass-input w-full px-2 py-1 text-center font-mono text-xs" disabled>
+                </div>
+
+                <!-- Fade Out -->
+                <div class="space-y-2">
+                  <div class="flex items-center space-x-2">
+                    <input type="checkbox" id="fade-out-toggle" class="w-4 h-4 accent-[#a78bfa]" onchange="updateFadesDisplay()">
+                    <span class="text-xs text-white/80 font-display">Fade Out</span>
+                  </div>
+                  <input type="number" id="fade-out-ms" value="1000" step="100" min="0" class="glass-input w-full px-2 py-1 text-center font-mono text-xs" disabled>
+                </div>
+              </div>
+
+              <!-- Format output selector -->
+              <div class="space-y-2 pt-2">
+                <span class="text-xs text-white/40 font-display">Output format</span>
+                <div class="grid grid-cols-3 gap-2">
+                  <button onclick="setSnipFormat('wav')" id="snip-pill-wav" class="px-2 py-1.5 rounded-lg border border-[#a78bfa] bg-[#a78bfa]/10 text-[#a78bfa] text-xs font-semibold text-center font-display">WAV</button>
+                  <button onclick="setSnipFormat('mp3')" id="snip-pill-mp3" class="px-2 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-white text-xs font-semibold text-center font-display">MP3</button>
+                  <button onclick="setSnipFormat('ogg')" id="snip-pill-ogg" class="px-2 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-white text-xs font-semibold text-center font-display">OGG</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Column 3: Collapsible Effects Rack for Snipper -->
+            <div class="lg:col-span-1 flex flex-col justify-between">
+              <div class="glass-panel p-4 space-y-4 text-left">
+                <div class="flex items-center justify-between border-b border-white/10 pb-2">
+                  <button onclick="toggleCollapse('snip-fx-body', 'snip-fx-arrow')" class="flex items-center space-x-2 text-white/85 hover:text-white font-display font-bold text-sm">
+                    <i data-lucide="chevron-down" id="snip-fx-arrow" class="w-4 h-4 transition-transform duration-200"></i>
+                    <span>Effects Rack</span>
+                  </button>
+                  <div class="flex items-center space-x-2">
+                    <label class="text-[10px] text-white/50 uppercase tracking-wider">Bypass All</label>
+                    <input type="checkbox" id="snip-fx-bypass" onchange="toggleBypassAll(this)" class="w-4 h-4 accent-[#a78bfa]">
+                  </div>
+                </div>
+
+                <div id="snip-fx-body" class="space-y-3">
+                  <!-- Reverb -->
+                  <div class="space-y-1 bg-white/5 p-2.5 rounded-xl border border-white/5">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-white/90">Reverb</span>
+                      <input type="checkbox" id="snip-fx-reverb-toggle" onchange="onFxChange(this)" class="w-4 h-4 accent-[#a78bfa]">
+                    </div>
+                    <div class="space-y-1 text-[11px] pt-1">
+                      <div class="flex justify-between text-white/50">
+                        <span>Mix</span>
+                        <span id="snip-fx-reverb-mix-val">30%</span>
+                      </div>
+                      <input type="range" id="snip-fx-reverb-mix" min="0" max="100" value="30" oninput="onFxChange(this)" class="accent-slider w-full">
+                      
+                      <div class="flex justify-between text-white/50 pt-1">
+                        <span>Decay</span>
+                        <span id="snip-fx-reverb-decay-val">1.5s</span>
+                      </div>
+                      <input type="range" id="snip-fx-reverb-decay" min="0.1" max="10" step="0.1" value="1.5" oninput="onFxChange(this)" class="accent-slider w-full">
+                      
+                      <div class="flex justify-between text-white/50 pt-1">
+                        <span>Pre-delay</span>
+                        <span id="snip-fx-reverb-predelay-val">20ms</span>
+                      </div>
+                      <input type="range" id="snip-fx-reverb-predelay" min="0" max="100" value="20" oninput="onFxChange(this)" class="accent-slider w-full">
+                    </div>
+                  </div>
+
+                  <!-- Delay -->
+                  <div class="space-y-1 bg-white/5 p-2.5 rounded-xl border border-white/5">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-white/90">Delay</span>
+                      <input type="checkbox" id="snip-fx-delay-toggle" onchange="onFxChange(this)" class="w-4 h-4 accent-[#a78bfa]">
+                    </div>
+                    <div class="space-y-1 text-[11px] pt-1">
+                      <div class="flex justify-between text-white/50">
+                        <span>Mix</span>
+                        <span id="snip-fx-delay-mix-val">30%</span>
+                      </div>
+                      <input type="range" id="snip-fx-delay-mix" min="0" max="100" value="30" oninput="onFxChange(this)" class="accent-slider w-full">
+                      
+                      <div class="flex justify-between text-white/50 pt-1">
+                        <span>Time</span>
+                        <span id="snip-fx-delay-time-val">300ms</span>
+                      </div>
+                      <input type="range" id="snip-fx-delay-time" min="10" max="1000" value="300" oninput="onFxChange(this)" class="accent-slider w-full">
+                      
+                      <div class="flex justify-between text-white/50 pt-1">
+                        <span>Feedback</span>
+                        <span id="snip-fx-delay-feedback-val">40%</span>
+                      </div>
+                      <input type="range" id="snip-fx-delay-feedback" min="0" max="95" value="40" oninput="onFxChange(this)" class="accent-slider w-full">
+                    </div>
+                  </div>
+
+                  <!-- EQ -->
+                  <div class="space-y-1 bg-white/5 p-2.5 rounded-xl border border-white/5">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-white/90">3-Band EQ</span>
+                      <input type="checkbox" id="snip-fx-eq-toggle" onchange="onFxChange(this)" class="w-4 h-4 accent-[#a78bfa]">
+                    </div>
+                    <div class="space-y-1 text-[11px] pt-1">
+                      <div class="flex justify-between text-white/50">
+                        <span>Bass (Low Shelf)</span>
+                        <span id="snip-fx-eq-bass-val">0dB</span>
+                      </div>
+                      <input type="range" id="snip-fx-eq-bass" min="-12" max="12" value="0" oninput="onFxChange(this)" class="accent-slider w-full">
+                      
+                      <div class="flex justify-between text-white/50 pt-1">
+                        <span>Mid</span>
+                        <span id="snip-fx-eq-mid-val">0dB</span>
+                      </div>
+                      <input type="range" id="snip-fx-eq-mid" min="-12" max="12" value="0" oninput="onFxChange(this)" class="accent-slider w-full">
+                      
+                      <div class="flex justify-between text-white/50 pt-1">
+                        <span>Treble (High Shelf)</span>
+                        <span id="snip-fx-eq-treble-val">0dB</span>
+                      </div>
+                      <input type="range" id="snip-fx-eq-treble" min="-12" max="12" value="0" oninput="onFxChange(this)" class="accent-slider w-full">
+                    </div>
+                  </div>
+
+                  <!-- Compressor -->
+                  <div class="space-y-1 bg-white/5 p-2.5 rounded-xl border border-white/5">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-white/90">Compressor</span>
+                      <input type="checkbox" id="snip-fx-comp-toggle" onchange="onFxChange(this)" class="w-4 h-4 accent-[#a78bfa]">
+                    </div>
+                    <div class="space-y-1 text-[11px] pt-1">
+                      <div class="flex justify-between text-white/50">
+                        <span>Threshold</span>
+                        <span id="snip-fx-comp-thresh-val">-30dB</span>
+                      </div>
+                      <input type="range" id="snip-fx-comp-thresh" min="-60" max="0" value="-30" oninput="onFxChange(this)" class="accent-slider w-full">
+                      
+                      <div class="flex justify-between text-white/50 pt-1">
+                        <span>Ratio</span>
+                        <span id="snip-fx-comp-ratio-val">4</span>
+                      </div>
+                      <input type="range" id="snip-fx-comp-ratio" min="1" max="20" value="4" oninput="onFxChange(this)" class="accent-slider w-full">
+                      
+                      <div class="flex justify-between text-white/50 pt-1">
+                        <span>Attack</span>
+                        <span id="snip-fx-comp-attack-val">20ms</span>
+                      </div>
+                      <input type="range" id="snip-fx-comp-attack" min="1" max="200" value="20" oninput="onFxChange(this)" class="accent-slider w-full">
+
+                      <div class="flex justify-between text-white/50 pt-1">
+                        <span>Release</span>
+                        <span id="snip-fx-comp-release-val">250ms</span>
+                      </div>
+                      <input type="range" id="snip-fx-comp-release" min="10" max="1000" value="250" oninput="onFxChange(this)" class="accent-slider w-full">
+                    </div>
+                  </div>
+
+                  <!-- VU Level Meter -->
+                  <div class="space-y-1 pt-1">
+                    <span class="text-[10px] text-white/40 block font-display">Real-time Level Meter</span>
+                    <div class="h-6 bg-black/40 border border-white/10 rounded-lg overflow-hidden relative">
+                      <canvas id="fx-meter-canvas-snip" class="w-full h-full block"></canvas>
+                    </div>
+                  </div>
+
+                  <!-- Preview Trigger -->
+                  <div class="pt-1 flex">
+                    <button onclick="startFxPreview('snipper')" id="snip-fx-preview-btn" class="btn-secondary flex-1 py-1.5 text-xs flex items-center justify-center space-x-1 bg-violet-500/10 border border-violet-500/20 text-[#a78bfa]">
+                      <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                      <span>Preview with FX</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Playback controls & Trim Export -->
+            <div class="glass-panel p-4 flex flex-col justify-between lg:col-span-1">
+              <div>
+                <h3 class="font-display font-bold text-sm text-white/80 uppercase tracking-wider pb-2 border-b border-white/10 mb-4">Controls</h3>
+                <!-- Playback Row -->
+                <div class="flex justify-center space-x-2">
+                  <button onclick="playSnipFull()" class="btn-secondary px-4 py-2 text-xs flex items-center space-x-1" title="Play Full Track">
+                    <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                    <span>Play Full</span>
+                  </button>
+                  <button onclick="playSnipRegion()" class="btn-secondary px-4 py-2 text-xs flex items-center space-x-1 bg-violet-500/10 border-violet-500/20 text-[#a78bfa]" title="Loop Selection">
+                    <i data-lucide="repeat" class="w-3.5 h-3.5"></i>
+                    <span>Selection (Loop)</span>
+                  </button>
+                  <button onclick="stopSnipPlayback()" class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/80 hover:bg-white/10 transition-all">
+                    <i data-lucide="square" class="w-4 h-4 fill-white/80"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Export bar progress & Action button -->
+              <div class="mt-4 space-y-3">
+                <!-- Active FX Summary -->
+                <div class="bg-black/20 rounded-lg p-2.5 border border-white/5 text-left">
+                  <span class="text-[10px] text-white/40 uppercase block mb-1">Processing State</span>
+                  <p id="snip-active-fx-summary" class="text-xs text-[#a78bfa] font-semibold">Active FX: None</p>
+                </div>
+
+                <div id="snip-progress-container" class="hidden space-y-1">
+                  <div class="flex justify-between text-xs font-mono text-white/40">
+                    <span>Processing clip...</span>
+                    <span id="snip-progress-percent">0%</span>
+                  </div>
+                  <div class="w-full h-1.5 bg-black/40 rounded-full overflow-hidden">
+                    <div id="snip-progress-bar" class="w-0 h-full bg-gradient-to-r from-[#a78bfa] to-[#38bdf8] transition-all"></div>
+                  </div>
+                </div>
+
+                <button onclick="exportSnippedClip()" id="snip-export-btn" class="btn-primary w-full py-3 text-sm flex items-center justify-center space-x-2">
+                  <i data-lucide="scissors" class="w-4 h-4"></i>
+                  <span>Export Clip</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- NEW FILE MODAL -->
+    <div id="new-file-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+      <div class="glass-panel p-6 max-w-sm w-full space-y-4 animate-in fade-in zoom-in duration-200">
+        <h3 class="font-display font-bold text-lg text-white/95">Create New MIDI Project</h3>
+        
+        <div class="space-y-3 text-left">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-xs text-white/40 block">BPM</label>
+              <input type="number" id="new-midi-bpm" class="glass-input w-full px-3 py-2 text-center font-mono text-sm" value="120" min="20" max="300">
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs text-white/40 block">Bars</label>
+              <input type="number" id="new-midi-bars" class="glass-input w-full px-3 py-2 text-center font-mono text-sm" value="4" min="1" max="64">
+            </div>
+          </div>
+          
+          <div class="space-y-1">
+            <label class="text-xs text-white/40 block">Time Signature</label>
+            <select id="new-midi-sig" class="bg-black/40 border border-white/10 text-xs text-white rounded-lg w-full px-3 py-2 outline-none focus:border-[#a78bfa]">
+              <option value="4/4">4/4 (Common Time)</option>
+              <option value="3/4">3/4 (Waltz)</option>
+              <option value="6/8">6/8 (Compound)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-2 pt-2">
+          <button onclick="closeNewFileModal()" class="btn-secondary flex-1 py-2 text-xs">
+            Cancel
+          </button>
+          <button onclick="createNewMidiProject()" class="btn-primary flex-1 py-2 text-xs bg-gradient-to-r from-[#a78bfa] to-[#38bdf8]">
+            Create
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- JavaScript module -->
+  <script type="module">
+    import WaveSurfer from 'https://cdn.jsdelivr.net/npm/wavesurfer.js@7/dist/wavesurfer.esm.js';
+    import RegionsPlugin from 'https://cdn.jsdelivr.net/npm/wavesurfer.js@7/dist/plugins/regions.esm.js';
+
+    // Export WaveSurfer so vanilla JS can refer to it
+    window.WaveSurfer = WaveSurfer;
+    window.RegionsPlugin = RegionsPlugin;
+
+    // Toast and general state initialization
+    window.addEventListener('load', () => {
+      lucide.createIcons();
+      switchTab('midi');
+      setupDragAndDrop();
+    });
+  </script>
+
+  <script>
+    // GLOBAL APP STATE
+    let currentTab = 'midi';
+    let currentMidi = null;
+    let currentMidiName = '';
+    let playbackTracks = [];
+    let currentBpm = 120;
+    let totalDuration = 0;
+    let playbackActive = false;
+    let loopActive = false;
+    let currentPlayheadTime = 0;
+    let animationFrameId = null;
+
+    // MIDI Editor & Tool State
+    let currentEditorTool = 'select';
+    let selectedNote = null; // selected note ref: { note, trackIdx, noteIdx }
+    let isDraggingNote = false;
+    let dragNoteStartOffset = 0;
+    let dragNotePitchOffset = 0;
+    let isResizingNote = false;
+    let isPanning = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    
+    // Canvas Scrolling / Layout Limits & Zoom (DAW Architecture)
+    let maxPitch = 84;
+    let minPitch = 36;
+    let pitchHeight = 20;
+    let scrollPitchY = 150;
+    let viewportStartTime = 0;
+    let pixelsPerSecond = 100;
+    let followPlayhead = true;
+    let scrollTime = 0; // Legacy mapping
+    let visibleDuration = 8; // Legacy mapping
+
+    // Quantize & Humanize State
+    let quantizeGrid = '1/4';
+    let quantizeStrength = 100;
+    let quantizeTarget = 'start'; // 'start', 'end', 'both'
+    let quantizeScope = 'all'; // 'selected', 'all'
+
+    // Undo / Redo Stacks
+    let undoStack = [];
+    let redoStack = [];
+    let snapIndicatorX = null;
+
+    // Theme System Definitions
+    const themes = {
+      'midnight': {
+        name: 'Midnight Violet',
+        bgStart: '#0a0a1a',
+        bgMid: '#12082a',
+        bgEnd: '#0d1a2e',
+        primary: '#a78bfa',
+        secondary: '#38bdf8',
+        tertiary: '#2dd4bf',
+        glass: 'rgba(255, 255, 255, 0.05)',
+        text: '#f0f0ff',
+        btnGradient: 'linear-gradient(90deg, #a78bfa, #38bdf8)',
+        btnText: '#ffffff',
+        glow: 'rgba(167, 139, 250, 0.5)',
+        border: 'rgba(255, 255, 255, 0.12)',
+        scrollbarThumb: 'linear-gradient(90deg, #a78bfa, #38bdf8)',
+        pattern: 'none'
+      },
+      'solar': {
+        name: 'Solar Flare',
+        bgStart: '#1a0a00',
+        bgMid: '#2a1200',
+        bgEnd: '#1a0800',
+        primary: '#fb923c',
+        secondary: '#fbbf24',
+        tertiary: '#f43f5e',
+        glass: 'rgba(251, 146, 60, 0.07)',
+        text: '#fff7ed',
+        btnGradient: 'linear-gradient(90deg, #fb923c, #fbbf24)',
+        btnText: '#ffffff',
+        glow: 'rgba(251, 146, 60, 0.5)',
+        border: 'rgba(255, 255, 255, 0.12)',
+        scrollbarThumb: 'linear-gradient(90deg, #fb923c, #fbbf24)',
+        pattern: 'none'
+      },
+      'arctic': {
+        name: 'Arctic Aurora',
+        bgStart: '#000d1a',
+        bgMid: '#001a0d',
+        bgEnd: '#001219',
+        primary: '#22d3ee',
+        secondary: '#4ade80',
+        tertiary: '#818cf8',
+        glass: 'rgba(34, 211, 238, 0.06)',
+        text: '#f0fffe',
+        btnGradient: 'linear-gradient(90deg, #22d3ee, #4ade80)',
+        btnText: '#ffffff',
+        glow: 'rgba(34, 211, 238, 0.5)',
+        border: 'rgba(255, 255, 255, 0.12)',
+        scrollbarThumb: 'linear-gradient(90deg, #22d3ee, #4ade80)',
+        pattern: 'none'
+      },
+      'tokyo': {
+        name: 'Neon Tokyo',
+        bgStart: '#0d0014',
+        bgMid: '#14001a',
+        bgEnd: '#0a000f',
+        primary: '#f0abfc',
+        secondary: '#facc15',
+        tertiary: '#4ade80',
+        glass: 'rgba(240, 171, 252, 0.06)',
+        text: '#fdf4ff',
+        btnGradient: 'linear-gradient(90deg, #f0abfc, #facc15)',
+        btnText: '#ffffff',
+        glow: 'rgba(240, 171, 252, 0.6)',
+        border: 'rgba(255, 255, 255, 0.12)',
+        scrollbarThumb: 'linear-gradient(90deg, #f0abfc, #facc15)',
+        pattern: 'radial-gradient(rgba(240, 171, 252, 0.15) 1px, transparent 1px)'
+      },
+      'ocean': {
+        name: 'Deep Ocean',
+        bgStart: '#000814',
+        bgMid: '#001233',
+        bgEnd: '#000d1a',
+        primary: '#60a5fa',
+        secondary: '#818cf8',
+        tertiary: '#38bdf8',
+        glass: 'rgba(96, 165, 250, 0.06)',
+        text: '#eff6ff',
+        btnGradient: 'linear-gradient(90deg, #60a5fa, #818cf8)',
+        btnText: '#ffffff',
+        glow: 'rgba(96, 165, 250, 0.5)',
+        border: 'rgba(255, 255, 255, 0.12)',
+        scrollbarThumb: 'linear-gradient(90deg, #60a5fa, #818cf8)',
+        pattern: 'none'
+      },
+      'ember': {
+        name: 'Obsidian Ember',
+        bgStart: '#0f0f0f',
+        bgMid: '#1a1a1a',
+        bgEnd: '#111111',
+        primary: '#ef4444',
+        secondary: '#f97316',
+        tertiary: '#eab308',
+        glass: 'rgba(239, 68, 68, 0.06)',
+        text: '#fef2f2',
+        btnGradient: 'linear-gradient(90deg, #ef4444, #f97316)',
+        btnText: '#ffffff',
+        glow: 'rgba(239, 68, 68, 0.5)',
+        border: 'rgba(239, 68, 68, 0.2)',
+        scrollbarThumb: 'linear-gradient(90deg, #ef4444, #f97316)',
+        pattern: 'none'
+      },
+      'rose-gold': {
+        name: 'Rose Gold',
+        bgStart: '#1a0a0f',
+        bgMid: '#1a0f14',
+        bgEnd: '#120a0d',
+        primary: '#fb7185',
+        secondary: '#f9a8d4',
+        tertiary: '#fda4af',
+        glass: 'rgba(251, 113, 133, 0.06)',
+        text: '#fff1f2',
+        btnGradient: 'linear-gradient(90deg, #fb7185, #f9a8d4)',
+        btnText: '#ffffff',
+        glow: 'rgba(251, 113, 133, 0.5)',
+        border: 'rgba(251, 113, 133, 0.2)',
+        scrollbarThumb: 'linear-gradient(90deg, #fb7185, #f9a8d4)',
+        pattern: 'none'
+      },
+      'monochrome': {
+        name: 'Monochrome',
+        bgStart: '#000000',
+        bgMid: '#0a0a0a',
+        bgEnd: '#050505',
+        primary: '#ffffff',
+        secondary: '#a3a3a3',
+        tertiary: '#525252',
+        glass: 'rgba(255, 255, 255, 0.04)',
+        text: '#ffffff',
+        btnGradient: 'linear-gradient(90deg, #ffffff, #a3a3a3)',
+        btnText: '#000000',
+        glow: 'rgba(255, 255, 255, 0.3)',
+        border: 'rgba(255, 255, 255, 0.2)',
+        scrollbarThumb: 'linear-gradient(90deg, #ffffff, #a3a3a3)',
+        pattern: 'none'
+      }
+    };
+
+    let currentTheme = localStorage.getItem('waveforge-theme') || 'midnight';
+
+    function getThemeColor(variableName, fallback) {
+      const val = getComputedStyle(document.documentElement).getPropertyValue(variableName).trim();
+      return val || fallback;
+    }
+
+    function toggleThemeDropdown(e) {
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+      const dropdown = document.getElementById('theme-dropdown');
+      if (dropdown) {
+        dropdown.classList.toggle('hidden');
+      }
+    }
+
+    // Close theme dropdown when clicking outside
+    window.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('theme-dropdown');
+      const btn = document.getElementById('theme-btn');
+      if (dropdown && !dropdown.classList.contains('hidden')) {
+        if (!dropdown.contains(e.target) && e.target !== btn && !btn?.contains(e.target)) {
+          dropdown.classList.add('hidden');
+        }
+      }
+    });
+
+    function renderThemeDropdown() {
+      const container = document.getElementById('theme-cards-container');
+      if (!container) return;
+      
+      container.innerHTML = '';
+      
+      Object.keys(themes).forEach(key => {
+        const theme = themes[key];
+        const isSelected = key === currentTheme;
+        
+        const card = document.createElement('div');
+        card.className = `p-2 rounded-lg border cursor-pointer flex flex-col justify-between h-16 transition-all ${
+          isSelected 
+            ? 'border-[var(--accent-primary)] bg-white/10 shadow-lg shadow-accent-primary/10' 
+            : 'border-white/5 bg-white/5 hover:bg-white/10'
+        }`;
+        card.onclick = () => applyTheme(key);
+        
+        // Color dots
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-[11px] text-white">${theme.name}</span>
+            ${isSelected ? `<i data-lucide="check" class="w-3 h-3 text-[var(--accent-primary)]"></i>` : ''}
+          </div>
+          <div class="flex space-x-1.5 mt-1">
+            <span class="w-3 h-3 rounded-full border border-white/10" style="background-color: ${theme.primary}"></span>
+            <span class="w-3 h-3 rounded-full border border-white/10" style="background-color: ${theme.secondary}"></span>
+            <span class="w-3 h-3 rounded-full border border-white/10" style="background-color: ${theme.tertiary}"></span>
+          </div>
+        `;
+        
+        container.appendChild(card);
+      });
+      
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    }
+
+    function applyTheme(themeKey) {
+      const theme = themes[themeKey];
+      if (!theme) return;
+      
+      currentTheme = themeKey;
+      localStorage.setItem('waveforge-theme', themeKey);
+      
+      const root = document.documentElement;
+      root.style.setProperty('--bg-gradient-start', theme.bgStart);
+      root.style.setProperty('--bg-gradient-mid', theme.bgMid);
+      root.style.setProperty('--bg-gradient-end', theme.bgEnd);
+      root.style.setProperty('--accent-primary', theme.primary);
+      root.style.setProperty('--accent-secondary', theme.secondary);
+      root.style.setProperty('--accent-tertiary', theme.tertiary);
+      root.style.setProperty('--panel-glass', theme.glass);
+      root.style.setProperty('--text-primary', theme.text);
+      root.style.setProperty('--btn-gradient', theme.btnGradient);
+      root.style.setProperty('--btn-text', theme.btnText);
+      root.style.setProperty('--glow-color', theme.glow);
+      root.style.setProperty('--border-color', theme.border);
+      root.style.setProperty('--scrollbar-thumb', theme.scrollbarThumb);
+      root.style.setProperty('--bg-pattern', theme.pattern);
+      
+      const body = document.body;
+      body.classList.remove('theme-monochrome', 'theme-neon-tokyo');
+      if (themeKey === 'monochrome') {
+        body.classList.add('theme-monochrome');
+      } else if (themeKey === 'tokyo') {
+        body.classList.add('theme-neon-tokyo');
+      }
+      
+      renderThemeDropdown();
+      drawPianoRoll();
+      
+      if (converterAudioBuffer) {
+        drawStaticWaveform(converterAudioBuffer, 'converter-waveform');
+      }
+    }
+
+    // Sound Engine samplers cache
+    let loadedSoundfonts = {};
+
+    // Live effects preview state
+    let activePreviews = {
+      converter: { player: null, reverb: null, delay: null, eq: null, comp: null, meter: null, rAF: null },
+      snipper: { player: null, reverb: null, delay: null, eq: null, comp: null, meter: null, rAF: null }
+    };
+
+    // Audio Conversion & Waveform
+    let converterBlob = null;
+    let converterAudioBuffer = null;
+    let converterFileName = '';
+    let targetFormat = 'mp3';
+    let targetBitrate = 192;
+    let convertedBlob = null;
+
+    // Trimmer State
+    let snipperBlob = null;
+    let snipperAudioBuffer = null;
+    let snipperFileName = '';
+    let wavesurfer = null;
+    let wsRegionsPlugin = null;
+    let activeRegion = null;
+    let snipFormat = 'wav';
+    let loopRegionInterval = null;
+
+    // Track colors palette
+    const colorPalette = [
+      { start: '#a78bfa', end: '#c084fc' }, // Violet
+      { start: '#38bdf8', end: '#60a5fa' }, // Cyan
+      { start: '#2dd4bf', end: '#34d399' }, // Teal
+      { start: '#f472b6', end: '#fb7185' }, // Pink
+      { start: '#fbbf24', end: '#f59e0b' }, // Amber
+    ];
+
+    function getTrackColors(idx) {
+      return colorPalette[idx % colorPalette.length];
+    }
+
+    // TAB MANAGER
+    function switchTab(tabId) {
+      currentTab = tabId;
+      ['midi', 'converter', 'snipper'].forEach(id => {
+        document.getElementById(`section-${id}`).classList.add('hidden');
+        const btn = document.getElementById(`tab-${id}`);
+        if (id === tabId) {
+          btn.className = "nav-tab active space-grotesk font-display font-semibold text-white";
+        } else {
+          btn.className = "nav-tab opacity-50 space-grotesk font-display font-semibold text-white hover:opacity-100 transition-all";
+        }
+      });
+      document.getElementById(`section-${tabId}`).classList.remove('hidden');
+
+      // Canvas adjustments
+      if (tabId === 'midi' && currentMidi) {
+        resizeCanvasToContainer();
+      }
+    }
+
+    window.addEventListener('resize', () => {
+      if (currentTab === 'midi' && currentMidi) {
+        resizeCanvasToContainer();
+      }
+    });
+
+    // TOAST SYSTEM
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const id = 'toast-' + Date.now();
+      const toastHtml = `
+        <div id="${id}" class="toast ${type === 'success' ? 'toast-success' : 'toast-error'} flex items-center space-x-3">
+          <i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}" class="w-5 h-5 ${type === 'success' ? 'text-[#2dd4bf]' : 'text-red-400'}"></i>
+          <div class="flex-1 text-xs font-semibold text-white/90">${message}</div>
+          <button onclick="dismissToast('${id}')" class="text-white/40 hover:text-white transition-colors">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+      `;
+      container.insertAdjacentHTML('beforeend', toastHtml);
+      lucide.createIcons();
+
+      setTimeout(() => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('show');
+      }, 10);
+
+      setTimeout(() => { dismissToast(id); }, 4000);
+    }
+
+    function dismissToast(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.remove('show');
+        setTimeout(() => { el.remove(); }, 300);
+      }
+    }
+
+    // DRAG AND DROP CONFIG
+    function setupDragAndDrop() {
+      const setupZone = (zoneId, inputId, onFileSelected) => {
+        const zone = document.getElementById(zoneId);
+        if (!zone) return;
+
+        zone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          zone.classList.add('dragover');
+        });
+
+        zone.addEventListener('dragleave', () => {
+          zone.classList.remove('dragover');
+        });
+
+        zone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          zone.classList.remove('dragover');
+          if (e.dataTransfer.files.length > 0) {
+            onFileSelected(e.dataTransfer.files[0]);
+          }
+        });
+      };
+
+      setupZone('midi-drop-zone', 'midi-file-input', loadMidiFile);
+      setupZone('converter-drop-zone', 'converter-file-input', loadConverterFile);
+      setupZone('snipper-drop-zone', 'snipper-file-input', loadSnipperFile);
+    }
+
+    // MODULE 1: MIDI VIEWER CORE
+    function handleMidiFileSelect(event) {
+      if (event.target.files.length > 0) {
+        loadMidiFile(event.target.files[0]);
+      }
+    }
+
+    function loadMidiFile(file) {
+      if (!file.name.endsWith('.mid') && !file.name.endsWith('.midi')) {
+        showToast("Invalid MIDI file. Make sure it's a valid .mid file.", "error");
+        return;
+      }
+
+      currentMidiName = file.name;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          let midiData;
+          if (typeof Midi === 'function') {
+            midiData = new Midi(e.target.result);
+          } else if (window.Midi && typeof window.Midi.parse === 'function') {
+            midiData = window.Midi.parse(e.target.result);
+          } else {
+            midiData = new window.Midi(e.target.result);
+          }
+          processMidi(midiData, file.name);
+        } catch (err) {
+          console.error(err);
+          showToast("Could not read MIDI file. Make sure it's a valid .mid file.", "error");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    class PlaybackTrack {
+      constructor(trackData, index) {
+        this.name = trackData.name || `Track ${index + 1} (${trackData.instrument.name || 'Synth'})`;
+        this.index = index;
+        this.notes = trackData.notes;
+        this.isMuted = false;
+        this.isSolo = false;
+        this.synthType = 'tone-synth';
+        this.synth = new Tone.PolySynth(Tone.Synth, {
+          oscillator: { type: index % 2 === 0 ? "triangle" : "sawtooth" },
+          envelope: { attack: 0.05, decay: 0.1, sustain: 0.3, release: 0.8 }
+        }).toDestination();
+        this.synth.volume.value = -12;
+      }
+    }
+
+    function processMidi(midi, filename) {
+      stopMidiPlayback();
+      currentMidi = midi;
+
+      // Reset existing synths
+      playbackTracks.forEach(t => t.synth.dispose());
+      playbackTracks = [];
+
+      let totalNotes = 0;
+      midi.tracks.forEach((t, idx) => {
+        if (t.notes.length > 0) {
+          playbackTracks.push(new PlaybackTrack(t, idx));
+          totalNotes += t.notes.length;
+        }
+      });
+
+      totalDuration = midi.duration || 10;
+      currentBpm = Math.round(midi.header.tempos[0]?.bpm || 120);
+
+      // Initialize layout limits based on loaded notes
+      let lowestPitch = 127;
+      let highestPitch = 0;
+      playbackTracks.forEach(t => {
+        t.notes.forEach(note => {
+          if (note.midi < lowestPitch) lowestPitch = note.midi;
+          if (note.midi > highestPitch) highestPitch = note.midi;
+        });
+      });
+      if (highestPitch < lowestPitch) { lowestPitch = 48; highestPitch = 72; }
+      
+      minPitch = Math.max(0, Math.min(48, lowestPitch - 4));
+      maxPitch = Math.min(127, Math.max(72, highestPitch + 4));
+      scrollPitchY = 150; // comfortable center offset
+      viewportStartTime = 0;
+      scrollTime = 0;
+      pixelsPerSecond = 100; // default zoom level: 100px per second
+      setTimeout(() => {
+        updateScrollbarUI();
+      }, 50);
+
+      // Populate track export selector
+      const trackExportSelect = document.getElementById('midi-export-track-select');
+      if (trackExportSelect) {
+        trackExportSelect.innerHTML = '<option value="all">All Tracks</option>';
+        playbackTracks.forEach((track, idx) => {
+          trackExportSelect.insertAdjacentHTML('beforeend', `<option value="${idx}">${track.name}</option>`);
+        });
+      }
+
+      document.getElementById('midi-filename-label').innerText = filename;
+      document.getElementById('midi-info-tracks').innerText = `${playbackTracks.length} Active Tracks`;
+      document.getElementById('midi-info-notes').innerText = `${totalNotes} Total Notes`;
+      document.getElementById('midi-bpm-input').value = currentBpm;
+      document.getElementById('midi-time-display').innerText = `00:00 / ${formatTimer(totalDuration)}`;
+
+      // Render tracks sidebar with independent instrument selectors
+      const listContainer = document.getElementById('midi-tracks-list');
+      listContainer.innerHTML = '';
+      playbackTracks.forEach((track, idx) => {
+        const colors = getTrackColors(idx);
+        const row = `
+          <div class="track-row p-3 rounded-lg border border-white/5 flex flex-col space-y-2 bg-white/5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-3 min-w-0 flex-1">
+                <div class="w-1.5 h-8 rounded-full flex-shrink-0 animate-pulse" style="background: linear-gradient(135deg, ${colors.start}, ${colors.end}); box-shadow: 0 0 10px ${colors.start}"></div>
+                <div class="text-xs min-w-0 text-left">
+                  <p class="font-semibold text-white/90 truncate">${track.name}</p>
+                  <p class="opacity-50 text-[10px]">Channel ${track.index + 1} • ${track.notes.length} notes</p>
+                </div>
+              </div>
+              <div class="flex items-center space-x-1 flex-shrink-0">
+                <button id="mute-btn-${idx}" onclick="toggleMute(${idx})" class="w-7 h-7 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white border border-white/10 rounded flex items-center justify-center transition-colors" title="Mute">
+                  <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
+                </button>
+                <button id="solo-btn-${idx}" onclick="toggleSolo(${idx})" class="px-2 py-1 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white border border-white/10 rounded text-[9px] font-bold font-display transition-colors">
+                  SOLO
+                </button>
+              </div>
+            </div>
+            
+            <!-- Per-track Synth/Soundfont Select -->
+            <div class="flex items-center space-x-2 pt-1 border-t border-white/5">
+              <span class="text-[10px] text-white/40 font-display">Instrument:</span>
+              <select id="track-synth-select-${idx}" onchange="changeTrackSynth(${idx}, this.value)" class="bg-black/35 border border-white/5 text-[10px] text-white rounded px-2 py-1 outline-none focus:border-[#a78bfa] transition-all flex-1">
+                <option value="tone-synth">Tone.js Synth</option>
+                <option value="tone-amsynth">AMSynth (Warm)</option>
+                <option value="tone-fmsynth">FMSynth (Electric)</option>
+                <option value="tone-pluck">PluckSynth (Plucked)</option>
+                <option value="soundfont-acoustic-grand-piano">Grand Piano</option>
+                <option value="soundfont-electric-guitar-clean">Clean Guitar</option>
+                <option value="soundfont-violin">Violin</option>
+                <option value="soundfont-choir-aahs">Choir</option>
+              </select>
+            </div>
+          </div>
+        `;
+        listContainer.insertAdjacentHTML('beforeend', row);
+      });
+
+      lucide.createIcons();
+      document.getElementById('midi-workspace').classList.remove('hidden');
+      resizeCanvasToContainer();
+      showToast("MIDI loaded and processed successfully!");
+    }
+
+    function toggleMute(idx) {
+      const track = playbackTracks[idx];
+      track.isMuted = !track.isMuted;
+      const btn = document.getElementById(`mute-btn-${idx}`);
+      if (track.isMuted) {
+        btn.classList.add('bg-red-500/20', 'border-red-500/40', 'text-red-400');
+        btn.innerHTML = '<i data-lucide="volume-x" class="w-3.5 h-3.5"></i>';
+      } else {
+        btn.classList.remove('bg-red-500/20', 'border-red-500/40', 'text-red-400');
+        btn.innerHTML = '<i data-lucide="volume-2" class="w-3.5 h-3.5"></i>';
+      }
+      lucide.createIcons();
+      updateTrackSynthVolumes();
+      drawPianoRoll();
+    }
+
+    function toggleSolo(idx) {
+      const track = playbackTracks[idx];
+      track.isSolo = !track.isSolo;
+      const btn = document.getElementById(`solo-btn-${idx}`);
+      if (track.isSolo) {
+        btn.classList.add('bg-[#38bdf8]/20', 'border-[#38bdf8]/40', 'text-[#38bdf8]');
+      } else {
+        btn.classList.remove('bg-[#38bdf8]/20', 'border-[#38bdf8]/40', 'text-[#38bdf8]');
+      }
+      updateTrackSynthVolumes();
+      drawPianoRoll();
+    }
+
+    function updateTrackSynthVolumes() {
+      const soloActive = playbackTracks.some(t => t.isSolo);
+      playbackTracks.forEach(track => {
+        if (track.isMuted) {
+          track.synth.volume.value = -Infinity;
+        } else if (soloActive && !track.isSolo) {
+          track.synth.volume.value = -Infinity;
+        } else {
+          track.synth.volume.value = -12;
+        }
+      });
+    }
+
+    // PIANO ROLL CANVAS RENDERING
+    function resizeCanvasToContainer() {
+      const canvas = document.getElementById('midi-canvas');
+      const container = document.getElementById('canvas-container');
+      if (canvas && container) {
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        drawPianoRoll();
+      }
+    }
+
+    function drawRoundedRect(ctx, x, y, width, height, radius) {
+      if (width < 2 * radius) radius = width / 2;
+      if (height < 2 * radius) radius = height / 2;
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.arcTo(x + width, y, x + width, y + height, radius);
+      ctx.arcTo(x + width, y + height, x, y + height, radius);
+      ctx.arcTo(x, y + height, x, y, radius);
+      ctx.arcTo(x, y, x + width, y, radius);
+      ctx.closePath();
+    }
+
+    function drawPianoRoll() {
+      const canvas = document.getElementById('midi-canvas');
+      if (!canvas || !currentMidi) return;
+      const ctx = canvas.getContext('2d');
+      
+      // Auto resize to container
+      const width = canvas.width = canvas.parentElement.clientWidth;
+      const height = canvas.height = canvas.parentElement.clientHeight || 350;
+
+      ctx.clearRect(0, 0, width, height);
+
+      const keyboardWidth = 50;
+      const rollWidth = width - keyboardWidth;
+      const rulerHeight = 24;
+
+      // Coordinate mappers
+      const timeToX = (time) => {
+        return keyboardWidth + (time - viewportStartTime) * pixelsPerSecond;
+      };
+
+      const xToTime = (x) => {
+        return viewportStartTime + (x - keyboardWidth) / pixelsPerSecond;
+      };
+
+      // Notes and keys drawn below time ruler (shift down by 24px)
+      const getYForPitch = (p) => {
+        return rulerHeight + (maxPitch - p) * pitchHeight - scrollPitchY;
+      };
+
+      const getPitchAtY = (y) => {
+        const actualY = y - rulerHeight + scrollPitchY;
+        return maxPitch - Math.floor(actualY / pitchHeight);
+      };
+
+      // Export coordinate mappers to window so mouse handlers can access them
+      window.timeToX = timeToX;
+      window.xToTime = xToTime;
+      window.getYForPitch = getYForPitch;
+      window.getPitchAtY = getPitchAtY;
+
+      const visibleDurationVal = rollWidth / pixelsPerSecond;
+      visibleDuration = visibleDurationVal; // Keep legacy variable in sync
+
+      // 1. Draw Grid Lanes and vertical grid lines (with clipping to notes area)
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(keyboardWidth, rulerHeight, rollWidth, height - rulerHeight);
+      ctx.clip();
+
+      // Horizontal Lanes
+      for (let p = minPitch; p <= maxPitch; p++) {
+        const y = getYForPitch(p);
+        if (y + pitchHeight < rulerHeight || y > height) continue;
+
+        const isBlack = [1, 3, 6, 8, 10].includes(p % 12);
+        ctx.fillStyle = isBlack ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.15)';
+        ctx.fillRect(keyboardWidth, y, rollWidth, pitchHeight);
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(keyboardWidth, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+
+      // Vertical Grid Lines (3 distinct opacity levels: subdivisions, beats, bars)
+      const secondsPerBeat = 60 / currentBpm;
+      const barInterval = secondsPerBeat * 4;
+      const gridInterval = getGridIntervalSeconds();
+      
+      const startGridT = Math.floor(viewportStartTime / gridInterval) * gridInterval;
+      const endGridT = Math.min(totalDuration, viewportStartTime + visibleDurationVal);
+      
+      for (let t = startGridT; t <= endGridT; t += gridInterval) {
+        const x = timeToX(t);
+        if (x < keyboardWidth || x > width) continue;
+        
+        const isBar = Math.abs((t % barInterval)) < 0.0001 || Math.abs((t % barInterval) - barInterval) < 0.0001;
+        const isBeat = Math.abs((t % secondsPerBeat)) < 0.0001 || Math.abs((t % secondsPerBeat) - secondsPerBeat) < 0.0001;
+        
+        ctx.beginPath();
+        ctx.moveTo(x, rulerHeight);
+        ctx.lineTo(x, height);
+        
+        if (isBar) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.globalAlpha = 0.5;
+          ctx.lineWidth = 1;
+        } else if (isBeat) {
+          ctx.strokeStyle = getThemeColor('--accent-primary', '#a78bfa');
+          ctx.globalAlpha = 0.4;
+          ctx.lineWidth = 0.8;
+        } else {
+          ctx.strokeStyle = getThemeColor('--accent-primary', '#a78bfa');
+          ctx.globalAlpha = 0.15;
+          ctx.lineWidth = 0.5;
+        }
+        
+        ctx.stroke();
+        ctx.globalAlpha = 1.0; // Reset
+      }
+
+      // 2. Draw Notes
+      const soloActive = playbackTracks.some(t => t.isSolo);
+      playbackTracks.forEach((pTrack, idx) => {
+        if (pTrack.isMuted) return;
+        const isDimmed = soloActive && !pTrack.isSolo;
+        ctx.globalAlpha = isDimmed ? 0.2 : 1.0;
+
+        const colors = getTrackColors(idx);
+        const gradient = ctx.createLinearGradient(keyboardWidth, 0, width, 0);
+        gradient.addColorStop(0, colors.start);
+        gradient.addColorStop(1, colors.end);
+
+        pTrack.notes.forEach((note) => {
+          if (note.midi < minPitch || note.midi > maxPitch) return;
+          const noteStartX = timeToX(note.time);
+          const noteEndX = timeToX(note.time + note.duration);
+          if (noteEndX < keyboardWidth || noteStartX > width) return;
+
+          const x = Math.max(keyboardWidth, noteStartX);
+          const w = Math.max(4, noteEndX - x);
+          const y = getYForPitch(note.midi) + 1;
+          const h = pitchHeight - 2;
+
+          if (y + h < rulerHeight || y > height) return;
+
+          const isSelected = selectedNote && selectedNote.note === note && selectedNote.trackIdx === idx;
+
+          ctx.fillStyle = gradient;
+          drawRoundedRect(ctx, x, y, w, h, 4);
+          ctx.fill();
+
+          if (isSelected) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(x + w - 4, y, 4, h);
+          } else {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        });
+      });
+      ctx.globalAlpha = 1.0;
+      ctx.restore(); // Restore clip region
+
+      // 3. Draw Piano Keys Overlay (clipping to keyboard vertical space)
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, rulerHeight, keyboardWidth, height - rulerHeight);
+      ctx.clip();
+
+      // Keyboard Background
+      ctx.fillStyle = getThemeColor('--bg-gradient-start', '#0a0a1a');
+      ctx.fillRect(0, rulerHeight, keyboardWidth, height - rulerHeight);
+
+      // White keys
+      for (let p = minPitch; p <= maxPitch; p++) {
+        const isBlack = [1, 3, 6, 8, 10].includes(p % 12);
+        if (isBlack) continue;
+        const y = getYForPitch(p);
+        if (y + pitchHeight < rulerHeight || y > height) continue;
+
+        const isPlaying = isKeyPlayingNow(p);
+
+        ctx.fillStyle = isPlaying ? getThemeColor('--accent-secondary', '#38bdf8') : '#ffffff';
+        ctx.fillRect(0, y, keyboardWidth, pitchHeight - 0.5);
+
+        if (p % 12 === 0) {
+          ctx.fillStyle = '#0a0a1a';
+          ctx.font = 'bold 8px "Space Grotesk"';
+          ctx.fillText(`C${p / 12 - 1}`, 4, y + pitchHeight - 2);
+        }
+
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.strokeRect(0, y, keyboardWidth, pitchHeight - 0.5);
+      }
+
+      // Black keys on top
+      for (let p = minPitch; p <= maxPitch; p++) {
+        const isBlack = [1, 3, 6, 8, 10].includes(p % 12);
+        if (!isBlack) continue;
+        const y = getYForPitch(p);
+        if (y + pitchHeight < rulerHeight || y > height) continue;
+
+        const isPlaying = isKeyPlayingNow(p);
+
+        ctx.fillStyle = isPlaying ? getThemeColor('--accent-primary', '#a78bfa') : '#1e1b4b';
+        ctx.fillRect(0, y + pitchHeight / 6, keyboardWidth * 0.65, pitchHeight * 2 / 3);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.strokeRect(0, y + pitchHeight / 6, keyboardWidth * 0.65, pitchHeight * 2 / 3);
+      }
+      ctx.restore(); // Restore clip region
+
+      // 4. Draw Time Ruler on Top Layer
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.fillRect(0, 0, width, rulerHeight);
+      
+      const interval = getRulerInterval();
+      const rulerStartT = Math.floor(viewportStartTime / interval) * interval;
+      const rulerEndT = Math.min(totalDuration, viewportStartTime + visibleDurationVal);
+      
+      ctx.fillStyle = getThemeColor('--text-primary', '#ffffff');
+      ctx.font = '11px "Space Grotesk"';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = 1;
+      
+      for (let t = rulerStartT; t <= rulerEndT; t += interval) {
+        const x = timeToX(t);
+        if (x < keyboardWidth || x > width) continue;
+        
+        ctx.beginPath();
+        ctx.moveTo(x, rulerHeight - 8);
+        ctx.lineTo(x, rulerHeight);
+        ctx.stroke();
+        
+        const min = Math.floor(t / 60);
+        const sec = Math.floor(t % 60).toString().padStart(2, '0');
+        ctx.fillText(`${min}:${sec}`, x, 8);
+      }
+      
+      // Bottom border for time ruler
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.beginPath();
+      ctx.moveTo(0, rulerHeight);
+      ctx.lineTo(width, rulerHeight);
+      ctx.stroke();
+
+      // 5. Draw Playhead
+      const playheadX = timeToX(currentPlayheadTime);
+      if (playheadX >= keyboardWidth && playheadX <= width) {
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(playheadX, rulerHeight);
+        ctx.lineTo(playheadX, height);
+        ctx.stroke();
+      }
+
+      // 6. Draw Glowing Snap Indicator Line
+      if (isDraggingNote && snapIndicatorX !== null && snapIndicatorX >= keyboardWidth && snapIndicatorX <= width) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = getThemeColor('--accent-primary', '#a78bfa');
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.moveTo(snapIndicatorX, rulerHeight);
+        ctx.lineTo(snapIndicatorX, height);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function getRulerInterval() {
+      const candidates = [1, 2, 5, 10, 30, 60, 120];
+      const minSpacing = 60; // minimum pixels between labels
+      for (let c of candidates) {
+        if (c * pixelsPerSecond >= minSpacing) {
+          return c;
+        }
+      }
+      return 300;
+    }
+
+    function getGridIntervalSeconds() {
+      const secondsPerBeat = 60 / currentBpm;
+      switch (quantizeGrid) {
+        case '1/1': return secondsPerBeat * 4;
+        case '1/2': return secondsPerBeat * 2;
+        case '1/4': return secondsPerBeat;
+        case '1/8': return secondsPerBeat / 2;
+        case '1/16': return secondsPerBeat / 4;
+        case '1/32': return secondsPerBeat / 8;
+        case '1/64': return secondsPerBeat / 16;
+        case '1/8T': return secondsPerBeat / 3;
+        case '1/16T': return secondsPerBeat / 6;
+        default: return secondsPerBeat;
+      }
+    }
+
+    function isKeyPlayingNow(pitch) {
+      if (!playbackActive) return false;
+      const t = currentPlayheadTime;
+      const soloActive = playbackTracks.some(st => st.isSolo);
+      return playbackTracks.some(track => {
+        if (track.isMuted) return false;
+        if (soloActive && !track.isSolo) return false;
+        return track.notes.some(n => n.midi === pitch && n.time <= t && t <= n.time + n.duration);
+      });
+    }
+
+    // PLAYBACK MANAGEMENT
+    function startMidiPlayback() {
+      if (playbackActive) return;
+      Tone.start();
+
+      playbackActive = true;
+      document.getElementById('midi-play-btn').classList.add('hidden');
+      document.getElementById('midi-pause-btn').classList.remove('hidden');
+
+      Tone.Transport.bpm.value = currentBpm;
+      Tone.Transport.cancel();
+
+      playbackTracks.forEach((pTrack) => {
+        pTrack.notes.forEach((note) => {
+          Tone.Transport.schedule((time) => {
+            pTrack.synth.triggerAttackRelease(note.name, note.duration, time, note.velocity);
+          }, note.time);
+        });
+      });
+
+      Tone.Transport.loop = loopActive;
+      Tone.Transport.loopEnd = totalDuration;
+      Tone.Transport.start();
+
+      function update() {
+        currentPlayheadTime = Tone.Transport.seconds;
+        if (currentPlayheadTime >= totalDuration && !loopActive) {
+          stopMidiPlayback();
+          return;
+        }
+        document.getElementById('midi-time-display').innerText = `${formatTimer(currentPlayheadTime)} / ${formatTimer(totalDuration)}`;
+        drawPianoRoll();
+        animationFrameId = requestAnimationFrame(update);
+      }
+      animationFrameId = requestAnimationFrame(update);
+    }
+
+    function pauseMidiPlayback() {
+      playbackActive = false;
+      document.getElementById('midi-play-btn').classList.remove('hidden');
+      document.getElementById('midi-pause-btn').classList.add('hidden');
+
+      Tone.Transport.pause();
+      if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+      drawPianoRoll();
+    }
+
+    function stopMidiPlayback() {
+      playbackActive = false;
+      document.getElementById('midi-play-btn').classList.remove('hidden');
+      document.getElementById('midi-pause-btn').classList.add('hidden');
+
+      Tone.Transport.stop();
+      if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+      currentPlayheadTime = 0;
+      document.getElementById('midi-time-display').innerText = `00:00 / ${formatTimer(totalDuration)}`;
+      drawPianoRoll();
+    }
+
+    function toggleLoop() {
+      loopActive = !loopActive;
+      const btn = document.getElementById('midi-loop-btn');
+      if (loopActive) {
+        btn.classList.add('bg-[#a78bfa]/20', 'border-[#a78bfa]/40', 'text-[#a78bfa]');
+      } else {
+        btn.classList.remove('bg-[#a78bfa]/20', 'border-[#a78bfa]/40', 'text-[#a78bfa]');
+      }
+      Tone.Transport.loop = loopActive;
+    }
+
+    function changeBpm(val) {
+      currentBpm = parseFloat(val) || 120;
+      Tone.Transport.bpm.value = currentBpm;
+    }
+
+    function formatTimer(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+
+    // EXPORT MIDI AS .MID
+    function exportMidiFile() {
+      if (!currentMidi) return;
+      try {
+        const trackSel = document.getElementById('midi-export-track-select').value;
+        let finalMidiArray;
+        
+        if (trackSel === 'all') {
+          const tempMidi = new Midi();
+          tempMidi.header.tempos = [{ bpm: currentBpm, time: 0 }];
+          playbackTracks.forEach(track => {
+            const newTrack = tempMidi.addTrack();
+            newTrack.name = track.name;
+            track.notes.forEach(n => {
+              newTrack.addNote({
+                midi: n.midi,
+                time: n.time,
+                duration: n.duration,
+                velocity: n.velocity || 0.8
+              });
+            });
+          });
+          finalMidiArray = tempMidi.toArray();
+        } else {
+          const trackIdx = parseInt(trackSel, 10);
+          const track = playbackTracks[trackIdx];
+          const tempMidi = new Midi();
+          tempMidi.header.tempos = [{ bpm: currentBpm, time: 0 }];
+          const newTrack = tempMidi.addTrack();
+          newTrack.name = track.name;
+          track.notes.forEach(n => {
+            newTrack.addNote({
+              midi: n.midi,
+              time: n.time,
+              duration: n.duration,
+              velocity: n.velocity || 0.8
+            });
+          });
+          finalMidiArray = tempMidi.toArray();
+        }
+        
+        const blob = new Blob([finalMidiArray], { type: "audio/midi" });
+        triggerDownload(blob, currentMidiName || "output.mid");
+        showToast("MIDI exported successfully!");
+      } catch (err) {
+        console.error(err);
+        showToast("Failed to serialize MIDI.", "error");
+      }
+    }
+
+    // OFFLINE SYNTHESIS & ENCODING FALLBACKS
+    function exportMidiToAudio() {
+      if (!currentMidi) return;
+      const format = document.getElementById('midi-export-format').value;
+      const trackSel = document.getElementById('midi-export-track-select').value;
+      showToast("Starting offline rendering/synthesis...", "success");
+
+      Tone.Offline(({ transport }) => {
+        transport.bpm.value = currentBpm;
+        
+        playbackTracks.forEach((pTrack, idx) => {
+          if (trackSel !== 'all' && parseInt(trackSel, 10) !== idx) return;
+          if (pTrack.isMuted) return;
+
+          let synth;
+          if (pTrack.synthType === 'tone-synth') {
+            synth = new Tone.PolySynth(Tone.Synth);
+          } else if (pTrack.synthType === 'tone-amsynth') {
+            synth = new Tone.PolySynth(Tone.AMSynth);
+          } else if (pTrack.synthType === 'tone-fmsynth') {
+            synth = new Tone.PolySynth(Tone.FMSynth);
+          } else if (pTrack.synthType === 'tone-pluck') {
+            synth = new Tone.PolySynth(Tone.PluckSynth);
+          } else {
+            synth = new Tone.PolySynth(Tone.Synth);
+          }
+          
+          synth.toDestination();
+          synth.volume.value = -6;
+
+          pTrack.notes.forEach(note => {
+            synth.triggerAttackRelease(note.name, note.duration, note.time, note.velocity);
+          });
+        });
+        
+        transport.start();
+      }, totalDuration).then(buffer => {
+        const rawBuffer = buffer.get();
+        const wavBlob = audioBufferToWav(rawBuffer);
+
+        if (format === 'wav') {
+          triggerDownload(wavBlob, "midi_synth_render.wav");
+          showToast("MIDI offline synthesis successful! Downloaded WAV.");
+        } else {
+          convertWavToFormatAndDownload(wavBlob, format, "midi_synth_render");
+        }
+      }).catch(err => {
+        console.error(err);
+        showToast("Offline synthesis failed.", "error");
+      });
+    }
+
+    // WAV ENCODER UTILITY (Pure client-side, extremely fast!)
+    function audioBufferToWav(buffer) {
+      let numOfChan = buffer.numberOfChannels,
+          length = buffer.length * numOfChan * 2 + 44,
+          bufferArr = new ArrayBuffer(length),
+          view = new DataView(bufferArr),
+          channels = [], i, sample,
+          offset = 0,
+          pos = 0;
+
+      const setUint16 = (data) => { view.setUint16(pos, data, true); pos += 2; };
+      const setUint32 = (data) => { view.setUint32(pos, data, true); pos += 4; };
+
+      setUint32(0x46464952); // "RIFF"
+      setUint32(length - 8); // file length - 8
+      setUint32(0x45564157); // "WAVE"
+      setUint32(0x20746d66); // "fmt " chunk
+      setUint32(16);         // chunk length
+      setUint16(1);          // sample format (PCM)
+      setUint16(numOfChan);
+      setUint32(buffer.sampleRate);
+      setUint32(buffer.sampleRate * numOfChan * 2);
+      setUint16(numOfChan * 2);
+      setUint16(16);         // bits per sample
+      setUint32(0x61746164); // "data" chunk
+      setUint32(length - pos - 4);
+
+      for (i = 0; i < buffer.numberOfChannels; i++) {
+        channels.push(buffer.getChannelData(i));
+      }
+
+      while (pos < length) {
+        for (i = 0; i < numOfChan; i++) {
+          sample = Math.max(-1, Math.min(1, channels[i][offset]));
+          sample = (sample < 0 ? sample * 0x8000 : sample * 0x7FFF);
+          view.setInt16(pos, sample, true);
+          pos += 2;
+        }
+        offset++;
+      }
+
+      return new Blob([bufferArr], { type: 'audio/wav' });
+    }
+
+    function triggerDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+
+    // FFmpeg Loader Helper
+    let ffmpegInstance = null;
+    let ffmpegLoadingPromise = null;
+
+    async function getFFmpeg() {
+      if (ffmpegInstance) return ffmpegInstance;
+      if (ffmpegLoadingPromise) return ffmpegLoadingPromise;
+
+      ffmpegLoadingPromise = (async () => {
+        const { FFmpeg } = FFmpegWasm;
+        const ffmpeg = new FFmpeg();
+        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+
+        await ffmpeg.load({
+          coreURL: await FFmpegWasm.toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+          wasmURL: await FFmpegWasm.toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+        });
+
+        ffmpegInstance = ffmpeg;
+        return ffmpeg;
+      })();
+
+      try {
+        return await ffmpegLoadingPromise;
+      } catch (err) {
+        ffmpegLoadingPromise = null;
+        console.error("FFmpeg load failed", err);
+        throw err;
+      }
+    }
+
+    async function convertWavToFormatAndDownload(wavBlob, format, baseFilename, filterArgs = []) {
+      try {
+        const ffmpeg = await getFFmpeg();
+        const arrayBuffer = await wavBlob.arrayBuffer();
+        const uint8 = new Uint8Array(arrayBuffer);
+
+        await ffmpeg.writeFile('input.wav', uint8);
+
+        const args = ['-i', 'input.wav'];
+        if (filterArgs && filterArgs.length > 0) {
+          args.push(...filterArgs);
+        }
+
+        if (format === 'mp3') {
+          args.push('-b:a', '192k', 'output.mp3');
+        } else if (format === 'ogg') {
+          args.push('-acodec', 'libvorbis', '-b:a', '192k', 'output.ogg');
+        } else if (format === 'wav') {
+          args.push('output.wav');
+        } else {
+          args.push(`output.${format}`);
+        }
+
+        await ffmpeg.exec(args);
+
+        const data = await ffmpeg.readFile(`output.${format}`);
+        const outBlob = new Blob([data.buffer], { type: `audio/${format}` });
+        triggerDownload(outBlob, `${baseFilename}.${format}`);
+        showToast("Audio converted and downloaded successfully!");
+      } catch (err) {
+        console.warn("FFmpeg unavailable or failed. Downloading WAV directly as fallback.", err);
+        triggerDownload(wavBlob, `${baseFilename}.wav`);
+        showToast("Audio engine failed. Downloaded WAV directly instead.", "error");
+      }
+    }
+
+
+    // MODULE 2: AUDIO CONVERTER CORE
+    function handleConverterFileSelect(event) {
+      if (event.target.files.length > 0) {
+        loadConverterFile(event.target.files[0]);
+      }
+    }
+
+    async function loadConverterFile(file) {
+      converterFileName = file.name;
+      converterBlob = file;
+
+      // Reset
+      document.getElementById('conv-btn').classList.remove('hidden');
+      document.getElementById('conv-download-btn').classList.add('hidden');
+      document.getElementById('conv-progress-container').classList.add('hidden');
+
+      // Decode audio for details and waveform rendering
+      showToast("Loading and decoding audio file...", "success");
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const arrayBuf = await file.arrayBuffer();
+        converterAudioBuffer = await ctx.decodeAudioData(arrayBuf);
+
+        // Update specs
+        document.getElementById('conv-spec-name').innerText = file.name;
+        document.getElementById('conv-spec-size').innerText = formatBytes(file.size);
+        document.getElementById('conv-spec-channels').innerText = converterAudioBuffer.numberOfChannels === 1 ? "Mono" : "Stereo";
+        document.getElementById('conv-spec-rate').innerText = `${converterAudioBuffer.sampleRate} Hz`;
+
+        // Render Static Waveform
+        drawStaticWaveform(converterAudioBuffer, 'converter-waveform');
+        updateEstimatedSize();
+
+        document.getElementById('converter-workspace').classList.remove('hidden');
+        showToast("Audio decoded and waveform generated successfully!");
+      } catch (err) {
+        console.error(err);
+        showToast("Failed to decode audio file.", "error");
+      }
+    }
+
+    function setTargetFormat(format) {
+      targetFormat = format;
+      ['mp3', 'wav', 'ogg', 'flac'].forEach(id => {
+        const btn = document.getElementById(`format-pill-${id}`);
+        if (id === format) {
+          btn.className = "px-2 py-1.5 rounded-lg border border-[#38bdf8] bg-[#38bdf8]/10 text-[#38bdf8] text-xs font-semibold text-center font-display";
+        } else {
+          btn.className = "px-2 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-white text-xs font-semibold text-center font-display";
+        }
+      });
+
+      const bitrateBlock = document.getElementById('bitrate-settings');
+      if (format === 'wav' || format === 'flac') {
+        bitrateBlock.classList.add('opacity-40', 'pointer-events-none');
+      } else {
+        bitrateBlock.classList.remove('opacity-40', 'pointer-events-none');
+      }
+      updateEstimatedSize();
+    }
+
+    function setTargetBitrate(bitrate) {
+      targetBitrate = bitrate;
+      [128, 192, 256, 320].forEach(b => {
+        const btn = document.getElementById(`bitrate-pill-${b}`);
+        if (b === bitrate) {
+          btn.className = "px-1.5 py-1 rounded-md border border-[#38bdf8] bg-[#38bdf8]/10 text-[#38bdf8] text-xs text-center font-mono";
+        } else {
+          btn.className = "px-1.5 py-1 rounded-md border border-white/10 bg-white/5 text-white/60 text-xs text-center font-mono";
+        }
+      });
+      updateEstimatedSize();
+    }
+
+    function updateEstimatedSize() {
+      if (!converterAudioBuffer) return;
+      const duration = converterAudioBuffer.duration;
+      let estSize = 0;
+
+      if (targetFormat === 'wav') {
+        estSize = converterAudioBuffer.sampleRate * converterAudioBuffer.numberOfChannels * 2 * duration;
+      } else if (targetFormat === 'flac') {
+        estSize = converterAudioBuffer.sampleRate * converterAudioBuffer.numberOfChannels * 2 * duration * 0.5;
+      } else {
+        estSize = (targetBitrate * 1000 * duration) / 8;
+      }
+      document.getElementById('conv-estimated-size').innerText = formatBytes(estSize);
+    }
+
+    function drawStaticWaveform(audioBuf, canvasId) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      const width = canvas.width = canvas.parentElement.clientWidth;
+      const height = canvas.height = canvas.parentElement.clientHeight;
+
+      ctx.clearRect(0, 0, width, height);
+      const gradient = ctx.createLinearGradient(0, 0, 0, height);
+      gradient.addColorStop(0, '#a78bfa');
+      gradient.addColorStop(1, '#38bdf8');
+      ctx.fillStyle = gradient;
+
+      const data = audioBuf.getChannelData(0);
+      const step = Math.ceil(data.length / width);
+      const amp = height / 2;
+
+      for (let i = 0; i < width; i++) {
+        let min = 1.0;
+        let max = -1.0;
+        for (let j = 0; j < step; j++) {
+          const val = data[i * step + j];
+          if (val < min) min = val;
+          if (val > max) max = val;
+        }
+        ctx.fillRect(i, (1 + min) * amp, 1.5, Math.max(1, (max - min) * amp));
+      }
+    }
+
+    async function startConversion() {
+      if (!converterAudioBuffer) return;
+
+      const container = document.getElementById('conv-progress-container');
+      const bar = document.getElementById('conv-progress-bar');
+      const percentText = document.getElementById('conv-progress-percent');
+      const statusText = document.getElementById('conv-progress-status');
+
+      container.classList.remove('hidden');
+      bar.style.width = '0%';
+      percentText.innerText = '0%';
+      statusText.innerText = 'Preparing audio engine...';
+
+      const fxArgs = buildFFmpegFilterArgs('conv');
+      const needsFFmpeg = (targetFormat !== 'wav') || (fxArgs.length > 0);
+
+      // 1. Check if we can bypass FFmpeg (extremely fast bypass!)
+      if (!needsFFmpeg) {
+        statusText.innerText = 'Encoding WAV directly...';
+        bar.style.width = '50%';
+        percentText.innerText = '50%';
+
+        setTimeout(() => {
+          convertedBlob = audioBufferToWav(converterAudioBuffer);
+          bar.style.width = '100%';
+          percentText.innerText = '100%';
+          statusText.innerText = 'Conversion Complete!';
+
+          document.getElementById('conv-btn').classList.add('hidden');
+          const dlBtn = document.getElementById('conv-download-btn');
+          dlBtn.classList.remove('hidden');
+          document.getElementById('conv-download-text').innerText = `Download (${formatBytes(convertedBlob.size)})`;
+          showToast("WAV converted successfully!");
+        }, 100);
+        return;
+      }
+
+      // 2. FFmpeg.wasm Transcoding with FX Filter Chain
+      try {
+        statusText.innerText = 'Loading WebAssembly audio core...';
+        const ffmpeg = await getFFmpeg();
+
+        statusText.innerText = 'Preparing waveform for transcode...';
+        const inputWavBlob = audioBufferToWav(converterAudioBuffer);
+        const arrayBuffer = await inputWavBlob.arrayBuffer();
+        const uint8 = new Uint8Array(arrayBuffer);
+
+        await ffmpeg.writeFile('input.wav', uint8);
+
+        ffmpeg.on('progress', ({ progress }) => {
+          const pct = Math.round(progress * 100);
+          bar.style.width = `${pct}%`;
+          percentText.innerText = `${pct}%`;
+          statusText.innerText = `Transcoding to ${targetFormat.toUpperCase()}...`;
+        });
+
+        const args = ['-i', 'input.wav'];
+        if (fxArgs.length > 0) {
+          args.push(...fxArgs);
+        }
+
+        if (targetFormat === 'mp3') {
+          args.push('-b:a', `${targetBitrate}k`, 'output.mp3');
+        } else if (targetFormat === 'ogg') {
+          args.push('-acodec', 'libvorbis', '-b:a', `${targetBitrate}k`, 'output.ogg');
+        } else if (targetFormat === 'flac') {
+          args.push('-acodec', 'flac', 'output.flac');
+        } else if (targetFormat === 'wav') {
+          args.push('output.wav');
+        }
+
+        await ffmpeg.exec(args);
+
+        const data = await ffmpeg.readFile(`output.${targetFormat}`);
+        convertedBlob = new Blob([data.buffer], { type: `audio/${targetFormat}` });
+
+        bar.style.width = '100%';
+        percentText.innerText = '100%';
+        statusText.innerText = 'Conversion Complete!';
+
+        document.getElementById('conv-btn').classList.add('hidden');
+        const dlBtn = document.getElementById('conv-download-btn');
+        dlBtn.classList.remove('hidden');
+        document.getElementById('conv-download-text').innerText = `Download (${formatBytes(convertedBlob.size)})`;
+        showToast("Audio converted successfully!");
+      } catch (err) {
+        console.error("FFmpeg Error:", err);
+        statusText.innerText = 'Audio Engine failure. Downloading WAV directly as fallback.';
+        convertedBlob = audioBufferToWav(converterAudioBuffer);
+        bar.style.width = '100%';
+        percentText.innerText = '100%';
+
+        document.getElementById('conv-btn').classList.add('hidden');
+        const dlBtn = document.getElementById('conv-download-btn');
+        dlBtn.classList.remove('hidden');
+        document.getElementById('conv-download-text').innerText = `Download WAV (${formatBytes(convertedBlob.size)})`;
+        showToast("Audio engine error. Falling back to WAV export.", "error");
+      }
+    }
+
+    function downloadConvertedFile() {
+      if (!convertedBlob) return;
+      const base = converterFileName.substring(0, converterFileName.lastIndexOf('.')) || 'waveforge_export';
+      const ext = targetFormat === 'wav' ? 'wav' : targetFormat;
+      triggerDownload(convertedBlob, `${base}.${ext}`);
+    }
+
+
+    // MODULE 3: SNIPPER / TRIMMER CORE
+    function handleSnipperFileSelect(event) {
+      if (event.target.files.length > 0) {
+        loadSnipperFile(event.target.files[0]);
+      }
+    }
+
+    async function loadSnipperFile(file) {
+      snipperFileName = file.name;
+      snipperBlob = file;
+
+      document.getElementById('snip-export-btn').classList.remove('hidden');
+      document.getElementById('snip-progress-container').classList.add('hidden');
+
+      showToast("Decoding audio file into Wavesurfer workspace...", "success");
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const arrayBuf = await file.arrayBuffer();
+        snipperAudioBuffer = await ctx.decodeAudioData(arrayBuf);
+
+        document.getElementById('snipper-file-label').innerText = file.name;
+        document.getElementById('snipper-time-label').innerText = `00:00.000 / ${formatMsTime(snipperAudioBuffer.duration)}`;
+
+        // Mount WaveSurfer and Region
+        initWaveSurfer(file);
+      } catch (err) {
+        console.error(err);
+        showToast("Could not decode audio file for trimming.", "error");
+      }
+    }
+
+    function initWaveSurfer(file) {
+      const container = document.getElementById('waveform-container');
+      container.innerHTML = '';
+
+      if (wavesurfer) { wavesurfer.destroy(); }
+
+      wavesurfer = window.WaveSurfer.create({
+        container: '#waveform-container',
+        waveColor: '#475569',
+        progressColor: '#38bdf8',
+        cursorColor: '#a78bfa',
+        barWidth: 2,
+        barRadius: 3,
+        height: 100,
+        url: URL.createObjectURL(file)
+      });
+
+      wsRegionsPlugin = wavesurfer.registerPlugin(window.RegionsPlugin.create());
+
+      wavesurfer.on('ready', () => {
+        const duration = wavesurfer.getDuration();
+        activeRegion = wsRegionsPlugin.addRegion({
+          start: 0,
+          end: duration * 0.3,
+          color: 'rgba(167, 139, 250, 0.25)',
+          drag: true,
+          resize: true
+        });
+
+        // Sync inputs
+        updateRegionInputs(activeRegion.start, activeRegion.end);
+
+        wsRegionsPlugin.on('region-updated', (reg) => {
+          activeRegion = reg;
+          updateRegionInputs(reg.start, reg.end);
+        });
+
+        document.getElementById('snipper-workspace').classList.remove('hidden');
+        showToast("Waveform loaded with draggable trim region!");
+      });
+
+      wavesurfer.on('timeupdate', (time) => {
+        document.getElementById('snipper-time-label').innerText = `${formatMsTime(time)} / ${formatMsTime(wavesurfer.getDuration())}`;
+      });
+    }
+
+    function updateRegionInputs(start, end) {
+      document.getElementById('trim-start-input').value = formatMsTime(start);
+      document.getElementById('trim-end-input').value = formatMsTime(end);
+      document.getElementById('trim-duration-label').innerText = formatMsTime(end - start);
+    }
+
+    function manualRegionTimeChange() {
+      if (!activeRegion) return;
+      const start = parseMsTime(document.getElementById('trim-start-input').value);
+      const end = parseMsTime(document.getElementById('trim-end-input').value);
+      const duration = wavesurfer.getDuration();
+
+      if (start !== null && end !== null && start < end && end <= duration) {
+        activeRegion.setOptions({ start, end });
+        updateRegionInputs(start, end);
+      } else {
+        showToast("Invalid start or end time format or ranges.", "error");
+      }
+    }
+
+    function formatMsTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      const ms = Math.floor((seconds % 1) * 1000);
+      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+    }
+
+    function parseMsTime(str) {
+      const parts = str.split(':');
+      if (parts.length !== 2) return null;
+      const m = parseInt(parts[0], 10);
+      const rest = parts[1].split('.');
+      if (rest.length !== 2) return null;
+      const s = parseInt(rest[0], 10);
+      const ms = parseInt(rest[1], 10);
+      if (isNaN(m) || isNaN(s) || isNaN(ms)) return null;
+      return m * 60 + s + ms / 1000;
+    }
+
+    function updateFadesDisplay() {
+      const inChecked = document.getElementById('fade-in-toggle').checked;
+      const outChecked = document.getElementById('fade-out-toggle').checked;
+      document.getElementById('fade-in-ms').disabled = !inChecked;
+      document.getElementById('fade-out-ms').disabled = !outChecked;
+    }
+
+    function setSnipFormat(fmt) {
+      snipFormat = fmt;
+      ['wav', 'mp3', 'ogg'].forEach(id => {
+        const btn = document.getElementById(`snip-pill-${id}`);
+        if (id === fmt) {
+          btn.className = "px-2 py-1.5 rounded-lg border border-[#a78bfa] bg-[#a78bfa]/10 text-[#a78bfa] text-xs font-semibold text-center font-display";
+        } else {
+          btn.className = "px-2 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-white text-xs font-semibold text-center font-display";
+        }
+      });
+    }
+
+    // Snipper Playback
+    function playSnipFull() {
+      stopSnipPlayback();
+      wavesurfer.play();
+    }
+
+    function playSnipRegion() {
+      if (!activeRegion) return;
+      stopSnipPlayback();
+      wavesurfer.setTime(activeRegion.start);
+      wavesurfer.play();
+
+      loopRegionInterval = setInterval(() => {
+        if (wavesurfer.getCurrentTime() >= activeRegion.end) {
+          wavesurfer.setTime(activeRegion.start);
+        }
+      }, 30);
+    }
+
+    function stopSnipPlayback() {
+      if (loopRegionInterval) { clearInterval(loopRegionInterval); loopRegionInterval = null; }
+      wavesurfer.pause();
+    }
+
+    // EXPORT SNIPPED CLIP
+    async function exportSnippedClip() {
+      if (!snipperAudioBuffer || !activeRegion) return;
+
+      const container = document.getElementById('snip-progress-container');
+      const bar = document.getElementById('snip-progress-bar');
+      const percentText = document.getElementById('snip-progress-percent');
+
+      container.classList.remove('hidden');
+      bar.style.width = '10%';
+      percentText.innerText = '10%';
+
+      const start = activeRegion.start;
+      const end = activeRegion.end;
+      const duration = end - start;
+
+      const fadeInToggled = document.getElementById('fade-in-toggle').checked;
+      const fadeOutToggled = document.getElementById('fade-out-toggle').checked;
+      const fadeInMs = fadeInToggled ? parseFloat(document.getElementById('fade-in-ms').value) || 0 : 0;
+      const fadeOutMs = fadeOutToggled ? parseFloat(document.getElementById('fade-out-ms').value) || 0 : 0;
+
+      showToast("Trimming audio and applying fades...", "success");
+
+      try {
+        // OfflineAudioContext for high performance trim
+        const sampleRate = snipperAudioBuffer.sampleRate;
+        const channels = snipperAudioBuffer.numberOfChannels;
+        const totalSamples = Math.floor(duration * sampleRate);
+
+        const offlineCtx = new OfflineAudioContext(channels, totalSamples, sampleRate);
+        const source = offlineCtx.createBufferSource();
+        source.buffer = snipperAudioBuffer;
+
+        const gainNode = offlineCtx.createGain();
+        source.connect(gainNode);
+        gainNode.connect(offlineCtx.destination);
+
+        source.start(0, start, duration);
+
+        if (fadeInMs > 0) {
+          const fadeDur = fadeInMs / 1000;
+          gainNode.gain.setValueAtTime(0, 0);
+          gainNode.gain.linearRampToValueAtTime(1, fadeDur);
+        } else {
+          gainNode.gain.setValueAtTime(1, 0);
+        }
+
+        if (fadeOutMs > 0) {
+          const fadeDur = fadeOutMs / 1000;
+          const fadeStart = duration - fadeDur;
+          gainNode.gain.setValueAtTime(1, Math.max(0, fadeStart));
+          gainNode.gain.linearRampToValueAtTime(0, duration);
+        }
+
+        bar.style.width = '40%';
+        percentText.innerText = '40%';
+
+        const renderedBuffer = await offlineCtx.startRendering();
+
+        bar.style.width = '70%';
+        percentText.innerText = '70%';
+
+        const wavBlob = audioBufferToWav(renderedBuffer);
+        const baseName = snipperFileName.substring(0, snipperFileName.lastIndexOf('.')) || 'waveforge_snip';
+
+        const fxArgs = buildFFmpegFilterArgs('snip');
+        const needsFFmpeg = (snipFormat !== 'wav') || (fxArgs.length > 0);
+
+        if (!needsFFmpeg) {
+          bar.style.width = '100%';
+          percentText.innerText = '100%';
+          triggerDownload(wavBlob, `${baseName}_snipped.wav`);
+          showToast("Clip trimmed successfully and downloaded!");
+        } else {
+          await convertWavToFormatAndDownload(wavBlob, snipFormat, `${baseName}_snipped`, fxArgs);
+          bar.style.width = '100%';
+          percentText.innerText = '100%';
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("Export failed.", "error");
+      }
+    }
+
+    // --- NEW FILE MODAL ---
+    function showNewFileModal() {
+      document.getElementById('new-file-modal').classList.remove('hidden');
+    }
+
+    function closeNewFileModal() {
+      document.getElementById('new-file-modal').classList.add('hidden');
+    }
+
+    function createNewMidiProject() {
+      const bpm = parseInt(document.getElementById('new-midi-bpm').value, 10) || 120;
+      const bars = parseInt(document.getElementById('new-midi-bars').value, 10) || 4;
+      const sig = document.getElementById('new-midi-sig').value;
+
+      closeNewFileModal();
+
+      // Create a blank MIDI-like object using standard schema
+      const blankMidi = {
+        duration: bars * 4 * (60 / bpm),
+        header: {
+          tempos: [{ bpm: bpm, time: 0 }],
+          timeSignatures: [{ timeSignature: sig.split('/').map(Number), time: 0 }]
+        },
+        tracks: [
+          {
+            name: "Melody Track",
+            instrument: { name: "Synth" },
+            notes: []
+          }
+        ]
+      };
+
+      currentMidiName = "new_project.mid";
+      processMidi(blankMidi, currentMidiName);
+      showToast("New blank project created successfully!");
+    }
+
+    // --- SOUND ENGINE ---
+    function changeGlobalSynth(val) {
+      playbackTracks.forEach((track, idx) => {
+        changeTrackSynth(idx, val);
+      });
+    }
+
+    function changeTrackSynth(trackIdx, val) {
+      const track = playbackTracks[trackIdx];
+      if (!track) return;
+
+      track.synthType = val;
+
+      const sel = document.getElementById(`track-synth-select-${trackIdx}`);
+      if (sel && sel.value !== val) {
+        sel.value = val;
+      }
+
+      if (val.startsWith('soundfont-')) {
+        const soundfontId = val.replace('soundfont-', '').replace(/-/g, '_');
+        loadSoundfont(soundfontId, (sampler) => {
+          track.synth.dispose();
+          track.synth = sampler;
+          updateTrackSynthVolumes();
+          drawPianoRoll();
+        });
+      } else {
+        let newSynth;
+        if (val === 'tone-amsynth') {
+          newSynth = new Tone.PolySynth(Tone.AMSynth);
+        } else if (val === 'tone-fmsynth') {
+          newSynth = new Tone.PolySynth(Tone.FMSynth);
+        } else if (val === 'tone-pluck') {
+          newSynth = new Tone.PolySynth(Tone.PluckSynth);
+        } else if (val === 'tone-membrane') {
+          newSynth = new Tone.PolySynth(Tone.MembraneSynth);
+        } else {
+          newSynth = new Tone.PolySynth(Tone.Synth);
+        }
+
+        track.synth.dispose();
+        track.synth = newSynth.toDestination();
+        updateTrackSynthVolumes();
+        drawPianoRoll();
+      }
+    }
+
+    function loadSoundfont(instrumentName, callback) {
+      if (loadedSoundfonts[instrumentName]) {
+        callback(loadedSoundfonts[instrumentName]);
+        return;
+      }
+
+      if (window.MIDI && window.MIDI.Soundfont && window.MIDI.Soundfont[instrumentName]) {
+        const sampler = new Tone.Sampler({
+          urls: window.MIDI.Soundfont[instrumentName],
+          onload: () => {
+            loadedSoundfonts[instrumentName] = sampler;
+            callback(sampler);
+          }
+        }).toDestination();
+        return;
+      }
+
+      showToast(`Downloading sound samples for ${instrumentName.replace(/_/g, ' ')}...`, 'success');
+
+      const script = document.createElement('script');
+      script.src = `https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM/${instrumentName}-mp3.js`;
+      script.onload = () => {
+        try {
+          const data = window.MIDI && window.MIDI.Soundfont && window.MIDI.Soundfont[instrumentName];
+          if (!data) {
+            showToast(`Samples parsing failed for ${instrumentName}`, 'error');
+            return;
+          }
+          
+          const sampler = new Tone.Sampler({
+            urls: data,
+            onload: () => {
+              sampler.volume.value = -6;
+              loadedSoundfonts[instrumentName] = sampler;
+              showToast(`Instrument ${instrumentName.replace(/_/g, ' ')} loaded and ready!`);
+              callback(sampler);
+            },
+            onerror: (err) => {
+              console.error(err);
+              showToast(`Error initializing sampler buffers.`, 'error');
+            }
+          }).toDestination();
+        } catch (e) {
+          console.error(e);
+          showToast("Failed to compile Soundfont sampler.", "error");
+        }
+      };
+      script.onerror = () => {
+        showToast(`Download failed for instrument ${instrumentName}`, "error");
+      };
+      document.body.appendChild(script);
+    }
+
+    function auditionPitch(pitch) {
+      Tone.start();
+      const pitchNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+      const name = pitchNames[pitch % 12] + (Math.floor(pitch / 12) - 1);
+      
+      const track = playbackTracks[0];
+      if (track && track.synth) {
+        track.synth.triggerAttackRelease(name, "8n");
+      } else {
+        const tempSynth = new Tone.PolySynth(Tone.Synth).toDestination();
+        tempSynth.triggerAttackRelease(name, "8n");
+        setTimeout(() => tempSynth.dispose(), 1000);
+      }
+    }
+
+    function auditionPreview() {
+      Tone.start();
+      showToast("Auditioning full Sound Engine...");
+      
+      playbackTracks.forEach((track, idx) => {
+        if (track.isMuted) return;
+        const basePitches = ["C4", "E4", "G4"];
+        const transpose = idx * 12;
+        const noteNames = basePitches.map(n => {
+          const m = Tone.Frequency(n).toMidi() + transpose;
+          const pitchNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+          return pitchNames[m % 12] + (Math.floor(m / 12) - 1);
+        });
+        
+        if (track.synth) {
+          track.synth.triggerAttackRelease(noteNames, "4n");
+        }
+      });
+    }
+
+    // --- CANVAS EVENTS & MIDI EDITOR ---
+    let hasDraggedOrResized = false;
+    let originalNoteState = null;
+
+    function setupCanvasEvents() {
+      const canvas = document.getElementById('midi-canvas');
+      if (!canvas) return;
+
+      canvas.addEventListener('mousedown', (e) => {
+        if (!currentMidi) return;
+        const { x, y } = getCanvasCoords(e);
+        lastMouseX = x;
+        lastMouseY = y;
+
+        if (currentEditorTool === 'pan' || e.button === 1) {
+          isPanning = true;
+          canvas.style.cursor = 'grabbing';
+          return;
+        }
+
+        if (x < 50) {
+          const clickedPitch = getPitchAtY(y);
+          auditionPitch(clickedPitch);
+          return;
+        }
+
+        const found = findNoteAt(x, y);
+
+        if (currentEditorTool === 'erase') {
+          if (found) {
+            pushToUndoStack();
+            playbackTracks[found.trackIdx].notes.splice(found.noteIdx, 1);
+            selectedNote = null;
+            updateNotePropertiesPanel();
+            drawPianoRoll();
+            showToast("Note deleted");
+          }
+          return;
+        }
+
+        if (currentEditorTool === 'draw') {
+          pushToUndoStack();
+          const clickedTime = xToTime(x);
+          const clickedPitch = getPitchAtY(y);
+          const beatDur = 60 / currentBpm;
+          
+          let quantizedTime = clickedTime;
+          if (!e.altKey) {
+            const gridSec = getGridIntervalSeconds();
+            quantizedTime = Math.round(clickedTime / gridSec) * gridSec;
+          }
+
+          if (playbackTracks.length === 0) {
+            playbackTracks.push(new PlaybackTrack({ name: "Melody Track", notes: [] }, 0));
+          }
+          const trackIdx = 0;
+          
+          const pitchNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+          const noteName = pitchNames[clickedPitch % 12] + (Math.floor(clickedPitch / 12) - 1);
+
+          const newNote = {
+            midi: clickedPitch,
+            time: quantizedTime,
+            duration: beatDur / 2,
+            velocity: 0.8,
+            name: noteName
+          };
+
+          playbackTracks[trackIdx].notes.push(newNote);
+          selectedNote = { note: newNote, trackIdx, noteIdx: playbackTracks[trackIdx].notes.length - 1 };
+          updateNotePropertiesPanel();
+
+          isResizingNote = true;
+          originalNoteState = { time: quantizedTime, midi: clickedPitch, duration: beatDur / 2 };
+          drawPianoRoll();
+          return;
+        }
+
+        if (currentEditorTool === 'select') {
+          if (found) {
+            selectedNote = found;
+            updateNotePropertiesPanel();
+            
+            originalNoteState = {
+              time: found.note.time,
+              midi: found.note.midi,
+              duration: found.note.duration
+            };
+
+            if (isNearNoteRightEdge(x, found.note)) {
+              isResizingNote = true;
+            } else {
+              isDraggingNote = true;
+              dragNoteStartOffset = xToTime(x) - found.note.time;
+              dragNotePitchOffset = getPitchAtY(y) - found.note.midi;
+            }
+          } else {
+            selectedNote = null;
+            updateNotePropertiesPanel();
+          }
+          drawPianoRoll();
+        }
+      });
+
+      canvas.addEventListener('mousemove', (e) => {
+        if (!currentMidi) return;
+        const { x, y } = getCanvasCoords(e);
+
+        if (isPanning) {
+          const dx = x - lastMouseX;
+          const dy = y - lastMouseY;
+          
+          viewportStartTime = Math.max(0, viewportStartTime - dx / pixelsPerSecond);
+          scrollTime = viewportStartTime;
+          scrollPitchY = Math.max(0, scrollPitchY - dy);
+          
+          lastMouseX = x;
+          lastMouseY = y;
+          followPlayhead = false;
+          drawPianoRoll();
+          updateScrollbarUI();
+          return;
+        }
+
+        if (currentEditorTool === 'select' && !isDraggingNote && !isResizingNote) {
+          const found = findNoteAt(x, y);
+          if (found) {
+            if (isNearNoteRightEdge(x, found.note)) {
+              canvas.style.cursor = 'ew-resize';
+            } else {
+              canvas.style.cursor = 'pointer';
+            }
+          } else {
+            canvas.style.cursor = 'default';
+          }
+        } else if (currentEditorTool === 'pan') {
+          canvas.style.cursor = isPanning ? 'grabbing' : 'grab';
+        } else if (currentEditorTool === 'draw') {
+          canvas.style.cursor = 'crosshair';
+        } else if (currentEditorTool === 'erase') {
+          canvas.style.cursor = 'no-drop';
+        }
+
+        if (isResizingNote && selectedNote) {
+          let currentTime = xToTime(x);
+          if (!e.altKey) {
+            const gridSec = getGridIntervalSeconds();
+            currentTime = Math.round(currentTime / gridSec) * gridSec;
+          }
+          const newDuration = Math.max(0.05, currentTime - selectedNote.note.time);
+          selectedNote.note.duration = newDuration;
+          updateNotePropertiesPanelValues();
+          drawPianoRoll();
+          return;
+        }
+
+        if (isDraggingNote && selectedNote) {
+          const currentTime = xToTime(x);
+          const currentPitch = getPitchAtY(y);
+
+          let newTime = currentTime - dragNoteStartOffset;
+          if (newTime < 0) newTime = 0;
+
+          if (!e.altKey) {
+            const gridSec = getGridIntervalSeconds();
+            newTime = Math.round(newTime / gridSec) * gridSec;
+            snapIndicatorX = timeToX(newTime);
+          } else {
+            snapIndicatorX = null;
+          }
+
+          const newPitch = Math.max(minPitch, Math.min(maxPitch, currentPitch - dragNotePitchOffset));
+          const pitchNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+          const noteName = pitchNames[newPitch % 12] + (Math.floor(newPitch / 12) - 1);
+
+          selectedNote.note.time = newTime;
+          selectedNote.note.midi = newPitch;
+          selectedNote.note.name = noteName;
+
+          updateNotePropertiesPanelValues();
+          drawPianoRoll();
+        }
+      });
+
+      canvas.addEventListener('mouseup', (e) => {
+        snapIndicatorX = null;
+        if ((isDraggingNote || isResizingNote) && selectedNote && originalNoteState) {
+          if (selectedNote.note.time !== originalNoteState.time ||
+              selectedNote.note.midi !== originalNoteState.midi ||
+              selectedNote.note.duration !== originalNoteState.duration) {
+            
+            const newT = selectedNote.note.time;
+            const newM = selectedNote.note.midi;
+            const newD = selectedNote.note.duration;
+            
+            // Restore original temporarily to snapshot previous state
+            selectedNote.note.time = originalNoteState.time;
+            selectedNote.note.midi = originalNoteState.midi;
+            selectedNote.note.duration = originalNoteState.duration;
+            
+            pushToUndoStack();
+            
+            // Put new state back
+            selectedNote.note.time = newT;
+            selectedNote.note.midi = newM;
+            selectedNote.note.duration = newD;
+            
+            updateUndoRedoButtons();
+          }
+        }
+        
+        isDraggingNote = false;
+        isResizingNote = false;
+        isPanning = false;
+        originalNoteState = null;
+        canvas.style.cursor = currentEditorTool === 'pan' ? 'grab' : (currentEditorTool === 'draw' ? 'crosshair' : (currentEditorTool === 'erase' ? 'no-drop' : 'default'));
+        drawPianoRoll();
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        snapIndicatorX = null;
+        isDraggingNote = false;
+        isResizingNote = false;
+        isPanning = false;
+        originalNoteState = null;
+        canvas.style.cursor = currentEditorTool === 'pan' ? 'grab' : (currentEditorTool === 'draw' ? 'crosshair' : (currentEditorTool === 'erase' ? 'no-drop' : 'default'));
+        drawPianoRoll();
+      });
+
+      // DAW Wheel zoom and scroll
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        if (e.shiftKey) {
+          const rect = canvas.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseTime = xToTime(mouseX);
+          
+          const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+          const newPixelsPerSecond = Math.max(10, Math.min(1000, pixelsPerSecond * zoomFactor));
+          
+          viewportStartTime = Math.max(0, mouseTime - (mouseX - 50) / newPixelsPerSecond);
+          pixelsPerSecond = newPixelsPerSecond;
+          scrollTime = viewportStartTime;
+          
+          drawPianoRoll();
+          updateScrollbarUI();
+        } else {
+          const scrollSpeed = 0.15; // seconds per wheel tick
+          const direction = e.deltaY > 0 ? 1 : -1;
+          const visibleDurationVal = canvas.width / pixelsPerSecond;
+          const maxTime = Math.max(totalDuration, visibleDurationVal + 10);
+          
+          viewportStartTime = Math.max(0, Math.min(maxTime - visibleDurationVal, viewportStartTime + direction * scrollSpeed));
+          scrollTime = viewportStartTime;
+          followPlayhead = false;
+          
+          drawPianoRoll();
+          updateScrollbarUI();
+        }
+      }, { passive: false });
+    }
+
+    function setEditorTool(tool) {
+      currentEditorTool = tool;
+      const tools = ['select', 'draw', 'erase', 'pan'];
+      tools.forEach(t => {
+        const btn = document.getElementById(`tool-${t}`);
+        if (btn) {
+          if (t === tool) {
+            btn.className = "pill-button px-3 py-1.5 text-xs font-semibold flex items-center space-x-1 bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white";
+          } else {
+            btn.className = "pill-button px-3 py-1.5 text-xs font-semibold flex items-center space-x-1 opacity-50 text-white/60";
+          }
+        }
+      });
+      const canvas = document.getElementById('midi-canvas');
+      if (canvas) {
+        canvas.style.cursor = tool === 'pan' ? 'grab' : (tool === 'draw' ? 'crosshair' : (tool === 'erase' ? 'no-drop' : 'default'));
+      }
+    }
+
+    function getCanvasCoords(e) {
+      const canvas = document.getElementById('midi-canvas');
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+      const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+      return { x, y };
+    }
+
+    function findNoteAt(x, y) {
+      if (!window.xToTime || !window.getPitchAtY) return null;
+      const clickedTime = window.xToTime(x);
+      const clickedPitch = window.getPitchAtY(y);
+
+      for (let trackIdx = 0; trackIdx < playbackTracks.length; trackIdx++) {
+        const track = playbackTracks[trackIdx];
+        if (track.isMuted) continue;
+        for (let noteIdx = 0; noteIdx < track.notes.length; noteIdx++) {
+          const note = track.notes[noteIdx];
+          if (note.midi === clickedPitch && clickedTime >= note.time && clickedTime <= note.time + note.duration) {
+            return { note, trackIdx, noteIdx };
+          }
+        }
+      }
+      return null;
+    }
+
+    function isNearNoteRightEdge(x, note) {
+      if (!window.timeToX) return false;
+      const noteEndX = window.timeToX(note.time + note.duration);
+      return Math.abs(x - noteEndX) < 8;
+    }
+
+    // --- ZOOM TOOLBAR ACTIONS ---
+    function zoomIn() {
+      const canvas = document.getElementById('midi-canvas');
+      if (!canvas) return;
+      const originalPPS = pixelsPerSecond;
+      pixelsPerSecond = Math.min(1000, pixelsPerSecond * 1.2);
+      
+      // Keep viewportStartTime centered around center of viewport
+      const rollWidthVal = canvas.width - 50;
+      const centerTime = viewportStartTime + (rollWidthVal / originalPPS) / 2;
+      viewportStartTime = Math.max(0, centerTime - (rollWidthVal / pixelsPerSecond) / 2);
+      scrollTime = viewportStartTime;
+      
+      drawPianoRoll();
+      updateScrollbarUI();
+    }
+
+    function zoomOut() {
+      const canvas = document.getElementById('midi-canvas');
+      if (!canvas) return;
+      const originalPPS = pixelsPerSecond;
+      pixelsPerSecond = Math.max(10, pixelsPerSecond / 1.2);
+      
+      const rollWidthVal = canvas.width - 50;
+      const centerTime = viewportStartTime + (rollWidthVal / originalPPS) / 2;
+      viewportStartTime = Math.max(0, centerTime - (rollWidthVal / pixelsPerSecond) / 2);
+      scrollTime = viewportStartTime;
+      
+      drawPianoRoll();
+      updateScrollbarUI();
+    }
+
+    function fitToWindow() {
+      const canvas = document.getElementById('midi-canvas');
+      if (!canvas) return;
+      const rollWidthVal = canvas.width - 50;
+      const maxTime = Math.max(5, totalDuration);
+      pixelsPerSecond = Math.max(10, rollWidthVal / maxTime);
+      viewportStartTime = 0;
+      scrollTime = viewportStartTime;
+      
+      drawPianoRoll();
+      updateScrollbarUI();
+    }
+
+    function setZoom100() {
+      pixelsPerSecond = 100;
+      drawPianoRoll();
+      updateScrollbarUI();
+    }
+
+    function toggleFollowPlayhead() {
+      followPlayhead = !followPlayhead;
+      const followBtn = document.getElementById('btn-follow-playhead');
+      if (followBtn) {
+        if (followPlayhead) {
+          followBtn.classList.add('bg-violet-500/20', 'text-[#a78bfa]');
+          showToast("Follow Playhead Active");
+        } else {
+          followBtn.classList.remove('bg-violet-500/20', 'text-[#a78bfa]');
+          showToast("Follow Playhead Disabled");
+        }
+      }
+    }
+
+    // --- QUANTIZE & HUMANIZE PANEL ACTIONS ---
+    function toggleQuantizePanel() {
+      const panel = document.getElementById('quantize-panel');
+      const arrow = document.getElementById('quantize-panel-arrow');
+      if (panel) {
+        panel.classList.toggle('hidden');
+        if (arrow) {
+          arrow.style.transform = panel.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+        }
+      }
+    }
+
+    function setQuantizeGrid(grid) {
+      quantizeGrid = grid;
+      // Re-style grid buttons
+      const grids = ['1/1', '1/2', '1/4', '1/8', '1/16', '1/32', '1/64', '1/8T', '1/16T'];
+      grids.forEach(g => {
+        const btn = document.getElementById(`grid-${g}`);
+        if (btn) {
+          if (g === grid) {
+            btn.className = "px-2 py-1 bg-[var(--accent-primary)]/20 text-[var(--accent-primary)] border border-[var(--accent-primary)]/30 rounded text-center text-xs font-semibold";
+          } else {
+            btn.className = "px-2 py-1 bg-white/5 hover:bg-white/10 text-white/60 border border-white/5 rounded text-center text-xs";
+          }
+        }
+      });
+      drawPianoRoll();
+    }
+
+    function updateQuantizeStrength(strength) {
+      quantizeStrength = parseInt(strength);
+      const valLabel = document.getElementById('quantize-strength-val');
+      if (valLabel) {
+        valLabel.textContent = `${quantizeStrength}%`;
+      }
+    }
+
+    function setQuantizeTarget(target) {
+      quantizeTarget = target;
+      const targets = ['start', 'end', 'both'];
+      targets.forEach(t => {
+        const btn = document.getElementById(`target-${t}`);
+        if (btn) {
+          if (t === target) {
+            btn.className = "px-2 py-1 bg-[var(--accent-primary)]/20 text-[var(--accent-primary)] border border-[var(--accent-primary)]/30 rounded text-center text-xs font-semibold";
+          } else {
+            btn.className = "px-2 py-1 bg-white/5 hover:bg-white/10 text-white/60 border border-white/5 rounded text-center text-xs";
+          }
+        }
+      });
+    }
+
+    function setQuantizeScope(scope) {
+      quantizeScope = scope;
+      const scopes = ['all', 'selected'];
+      scopes.forEach(s => {
+        const btn = document.getElementById(`scope-${s}`);
+        if (btn) {
+          if (s === scope) {
+            btn.className = "px-2 py-1 bg-[var(--accent-primary)]/20 text-[var(--accent-primary)] border border-[var(--accent-primary)]/30 rounded text-center text-xs font-semibold";
+          } else {
+            btn.className = "px-2 py-1 bg-white/5 hover:bg-white/10 text-white/60 border border-white/5 rounded text-center text-xs";
+          }
+        }
+      });
+    }
+
+    function applyQuantize() {
+      pushToUndoStack();
+      
+      const gridSec = getGridIntervalSeconds();
+      const strength = quantizeStrength / 100;
+      let count = 0;
+
+      playbackTracks.forEach((track, tIdx) => {
+        track.notes.forEach((note, nIdx) => {
+          // Filter by scope
+          const isSelected = selectedNote && selectedNote.note === note && selectedNote.trackIdx === tIdx;
+          if (quantizeScope === 'selected' && !isSelected) return;
+
+          count++;
+          
+          if (quantizeTarget === 'start' || quantizeTarget === 'both') {
+            const originalTime = note.time;
+            const targetTime = Math.round(originalTime / gridSec) * gridSec;
+            // Linear interpolation based on strength
+            note.time = originalTime + (targetTime - originalTime) * strength;
+          }
+          
+          if (quantizeTarget === 'end' || quantizeTarget === 'both') {
+            const originalEnd = note.time + note.duration;
+            const targetEnd = Math.round(originalEnd / gridSec) * gridSec;
+            const finalEnd = originalEnd + (targetEnd - originalEnd) * strength;
+            note.duration = Math.max(0.05, finalEnd - note.time);
+          }
+        });
+      });
+
+      drawPianoRoll();
+      updateNotePropertiesPanelValues();
+      showToast(`Quantized ${count} notes (${quantizeStrength}% strength)`);
+    }
+
+    function applyHumanize() {
+      pushToUndoStack();
+
+      let count = 0;
+      playbackTracks.forEach((track, tIdx) => {
+        track.notes.forEach((note, nIdx) => {
+          const isSelected = selectedNote && selectedNote.note === note && selectedNote.trackIdx === tIdx;
+          if (quantizeScope === 'selected' && !isSelected) return;
+
+          count++;
+
+          // Humanize start time: random offset between -30ms and +30ms
+          const timeOffset = (Math.random() * 0.06) - 0.03;
+          note.time = Math.max(0, note.time + timeOffset);
+
+          // Humanize velocity: random offset between -10% and +10%
+          const velOffset = (Math.random() * 0.2) - 0.1;
+          note.velocity = Math.max(0.1, Math.min(1.0, note.velocity + velOffset));
+        });
+      });
+
+      drawPianoRoll();
+      updateNotePropertiesPanelValues();
+      showToast(`Humanized ${count} notes`);
+    }
+
+    // --- UNDO / REDO ---
+    function pushToUndoStack() {
+      const state = playbackTracks.map(t => {
+        return {
+          name: t.name,
+          isMuted: t.isMuted,
+          isSolo: t.isSolo,
+          notes: t.notes.map(n => ({...n}))
+        };
+      });
+      undoStack.push(state);
+      redoStack = []; // Clear redo on new action
+      updateUndoRedoButtons();
+    }
+
+    function undo() {
+      if (undoStack.length === 0) return;
+      
+      const currentState = playbackTracks.map(t => {
+        return {
+          name: t.name,
+          isMuted: t.isMuted,
+          isSolo: t.isSolo,
+          notes: t.notes.map(n => ({...n}))
+        };
+      });
+      redoStack.push(currentState);
+      
+      const previousState = undoStack.pop();
+      restoreState(previousState);
+      showToast("Undo applied");
+    }
+
+    function redo() {
+      if (redoStack.length === 0) return;
+      
+      const currentState = playbackTracks.map(t => {
+        return {
+          name: t.name,
+          isMuted: t.isMuted,
+          isSolo: t.isSolo,
+          notes: t.notes.map(n => ({...n}))
+        };
+      });
+      undoStack.push(currentState);
+      
+      const nextState = redoStack.pop();
+      restoreState(nextState);
+      showToast("Redo applied");
+    }
+
+    function restoreState(state) {
+      playbackTracks = state.map((tData, idx) => {
+        const track = new PlaybackTrack(tData, idx);
+        track.isMuted = tData.isMuted;
+        track.isSolo = tData.isSolo;
+        return track;
+      });
+      selectedNote = null;
+      updateNotePropertiesPanel();
+      drawPianoRoll();
+      updateUndoRedoButtons();
+    }
+
+    function updateUndoRedoButtons() {
+      const undoBtn = document.getElementById('btn-undo');
+      const redoBtn = document.getElementById('btn-redo');
+      if (undoBtn) {
+        if (undoStack.length > 0) {
+          undoBtn.removeAttribute('disabled');
+          undoBtn.style.opacity = '1';
+        } else {
+          undoBtn.setAttribute('disabled', 'true');
+          undoBtn.style.opacity = '0.4';
+        }
+      }
+      if (redoBtn) {
+        if (redoStack.length > 0) {
+          redoBtn.removeAttribute('disabled');
+          redoBtn.style.opacity = '1';
+        } else {
+          redoBtn.setAttribute('disabled', 'true');
+          redoBtn.style.opacity = '0.4';
+        }
+      }
+    }
+
+    // --- CUSTOM SCROLLBAR MANAGEMENT ---
+    function updateScrollbarUI() {
+      const thumb = document.getElementById('scrollbar-thumb');
+      const track = document.getElementById('scrollbar-track');
+      const canvas = document.getElementById('midi-canvas');
+      if (!thumb || !track || !canvas) return;
+
+      const trackWidth = track.clientWidth;
+      const visibleDurationVal = (canvas.width - 50) / pixelsPerSecond;
+      const maxTime = Math.max(totalDuration, visibleDurationVal + 10);
+
+      const thumbWidthRatio = Math.min(1, visibleDurationVal / maxTime);
+      const thumbWidth = Math.max(24, trackWidth * thumbWidthRatio);
+      thumb.style.width = `${thumbWidth}px`;
+
+      const maxStart = maxTime - visibleDurationVal;
+      const positionRatio = maxStart > 0 ? viewportStartTime / maxStart : 0;
+      const leftPos = positionRatio * (trackWidth - thumbWidth);
+      thumb.style.left = `${leftPos}px`;
+      
+      // Update followPlayhead state button styles
+      const followBtn = document.getElementById('btn-follow-playhead');
+      if (followBtn) {
+        if (followPlayhead) {
+          followBtn.classList.add('bg-violet-500/20', 'text-[#a78bfa]');
+        } else {
+          followBtn.classList.remove('bg-violet-500/20', 'text-[#a78bfa]');
+        }
+      }
+
+      // Update zoom level display
+      const zoomText = document.getElementById('zoom-display');
+      if (zoomText) {
+        zoomText.textContent = `${Math.round(pixelsPerSecond)}%`;
+      }
+    }
+
+    function setupScrollbarEvents() {
+      const thumb = document.getElementById('scrollbar-thumb');
+      const track = document.getElementById('scrollbar-track');
+      const canvas = document.getElementById('midi-canvas');
+      if (!thumb || !track || !canvas) return;
+
+      let isDraggingScrollbar = false;
+      let startMouseX = 0;
+      let startScrollTime = 0;
+
+      thumb.addEventListener('mousedown', (e) => {
+        isDraggingScrollbar = true;
+        startMouseX = e.clientX;
+        startScrollTime = viewportStartTime;
+        document.body.style.userSelect = 'none';
+        e.stopPropagation();
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDraggingScrollbar) return;
+        const dx = e.clientX - startMouseX;
+        const trackWidth = track.clientWidth;
+        const thumbWidth = thumb.clientWidth;
+        
+        const visibleDurationVal = (canvas.width - 50) / pixelsPerSecond;
+        const maxTime = Math.max(totalDuration, visibleDurationVal + 10);
+        const maxStart = maxTime - visibleDurationVal;
+
+        const scrollRange = trackWidth - thumbWidth;
+        if (scrollRange <= 0) return;
+
+        const ratio = dx / scrollRange;
+        const timeChange = ratio * maxStart;
+        
+        viewportStartTime = Math.max(0, Math.min(maxStart, startScrollTime + timeChange));
+        scrollTime = viewportStartTime; // Keep legacy mapped
+        
+        followPlayhead = false;
+
+        drawPianoRoll();
+        updateScrollbarUI();
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (isDraggingScrollbar) {
+          isDraggingScrollbar = false;
+          document.body.style.userSelect = '';
+        }
+      });
+
+      track.addEventListener('click', (e) => {
+        if (e.target === thumb) return;
+        const rect = track.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const trackWidth = track.clientWidth;
+        const thumbWidth = thumb.clientWidth;
+
+        const visibleDurationVal = (canvas.width - 50) / pixelsPerSecond;
+        const maxTime = Math.max(totalDuration, visibleDurationVal + 10);
+        const maxStart = maxTime - visibleDurationVal;
+
+        const clickRatio = (clickX - thumbWidth / 2) / (trackWidth - thumbWidth);
+        viewportStartTime = Math.max(0, Math.min(maxStart, clickRatio * maxStart));
+        scrollTime = viewportStartTime;
+        followPlayhead = false;
+        
+        drawPianoRoll();
+        updateScrollbarUI();
+      });
+    }
+
+    // --- NOTE PROPERTIES ---
+    function updateNotePropertiesPanel() {
+      const panel = document.getElementById('note-properties-panel');
+      if (!selectedNote) {
+        panel.classList.add('hidden');
+        return;
+      }
+      panel.classList.remove('hidden');
+      updateNotePropertiesPanelValues();
+    }
+
+    function updateNotePropertiesPanelValues() {
+      if (!selectedNote) return;
+      const n = selectedNote.note;
+      
+      document.getElementById('prop-pitch').value = n.name || n.midi;
+      document.getElementById('prop-start').value = n.time.toFixed(3);
+      document.getElementById('prop-duration').value = n.duration.toFixed(3);
+      document.getElementById('prop-velocity').value = Math.round((n.velocity || 0.8) * 127);
+    }
+
+    function updateSelectedNoteProperties() {
+      if (!selectedNote) return;
+      const n = selectedNote.note;
+
+      const pitchStr = document.getElementById('prop-pitch').value;
+      let midiVal = parseInt(pitchStr, 10);
+      if (isNaN(midiVal)) {
+        try {
+          midiVal = Tone.Frequency(pitchStr).toMidi();
+        } catch (e) {}
+      }
+      if (!isNaN(midiVal) && midiVal >= 0 && midiVal <= 127) {
+        n.midi = midiVal;
+        const pitchNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        n.name = pitchNames[midiVal % 12] + (Math.floor(midiVal / 12) - 1);
+      }
+
+      const startVal = parseFloat(document.getElementById('prop-start').value);
+      if (!isNaN(startVal) && startVal >= 0) {
+        n.time = startVal;
+      }
+
+      const durVal = parseFloat(document.getElementById('prop-duration').value);
+      if (!isNaN(durVal) && durVal > 0) {
+        n.duration = durVal;
+      }
+
+      const velVal = parseFloat(document.getElementById('prop-velocity').value) / 127;
+      if (!isNaN(velVal) && velVal >= 0 && velVal <= 1) {
+        n.velocity = velVal;
+      }
+
+      drawPianoRoll();
+    }
+
+    function clearSelection() {
+      selectedNote = null;
+      updateNotePropertiesPanel();
+      drawPianoRoll();
+    }
+
+    // --- COLLAPSE HANDLER ---
+    function toggleCollapse(bodyId, arrowId) {
+      const body = document.getElementById(bodyId);
+      const arrow = document.getElementById(arrowId);
+      if (body.classList.contains('hidden')) {
+        body.classList.remove('hidden');
+        arrow.classList.remove('rotate-180');
+      } else {
+        body.classList.add('hidden');
+        arrow.classList.add('rotate-180');
+      }
+    }
+
+    // --- AUDIO EFFECTS RACK PREVIEWS ---
+    async function startFxPreview(moduleKey) {
+      if (activePreviews[moduleKey].player) {
+        stopFxPreview(moduleKey);
+        return;
+      }
+
+      const audioBuf = moduleKey === 'converter' ? converterAudioBuffer : snipperAudioBuffer;
+      if (!audioBuf) {
+        showToast("Please select or load an audio file first.", "error");
+        return;
+      }
+
+      await Tone.start();
+
+      const player = new Tone.Player(audioBuf);
+      player.loop = true;
+
+      if (moduleKey === 'snipper' && activeRegion) {
+        player.loopStart = activeRegion.start;
+        player.loopEnd = activeRegion.end;
+      }
+
+      const eq = new Tone.EQ3();
+      const reverb = new Tone.Reverb();
+      const delay = new Tone.FeedbackDelay();
+      const comp = new Tone.Compressor();
+      const meter = new Tone.Meter({ channels: 2 });
+
+      activePreviews[moduleKey].player = player;
+      activePreviews[moduleKey].eq = eq;
+      activePreviews[moduleKey].reverb = reverb;
+      activePreviews[moduleKey].delay = delay;
+      activePreviews[moduleKey].comp = comp;
+      activePreviews[moduleKey].meter = meter;
+
+      updateFxParameters(moduleKey);
+
+      player.chain(eq, reverb, delay, comp, meter, Tone.Destination);
+      player.start();
+
+      const prefix = moduleKey === 'converter' ? 'conv' : 'snip';
+      const btn = document.getElementById(`${prefix}-fx-preview-btn`);
+      btn.classList.add('bg-red-500/10', 'border-red-500/20', 'text-red-400');
+      btn.innerHTML = `
+        <i data-lucide="square" class="w-3.5 h-3.5 fill-red-400"></i>
+        <span>Stop Preview</span>
+      `;
+      lucide.createIcons();
+
+      startMeterVisualizer(moduleKey, meter);
+    }
+
+    function stopFxPreview(moduleKey) {
+      const p = activePreviews[moduleKey];
+      if (p.player) {
+        p.player.stop();
+        p.player.dispose();
+        p.player = null;
+      }
+      if (p.eq) { p.eq.dispose(); p.eq = null; }
+      if (p.reverb) { p.reverb.dispose(); p.reverb = null; }
+      if (p.delay) { p.delay.dispose(); p.delay = null; }
+      if (p.comp) { p.comp.dispose(); p.comp = null; }
+      if (p.meter) { p.meter.dispose(); p.meter = null; }
+      if (p.rAF) { cancelAnimationFrame(p.rAF); p.rAF = null; }
+
+      const prefix = moduleKey === 'converter' ? 'conv' : 'snip';
+      const canvas = document.getElementById(`fx-meter-canvas-${prefix}`);
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+
+      const btn = document.getElementById(`${prefix}-fx-preview-btn`);
+      if (btn) {
+        btn.className = "btn-secondary flex-1 py-1.5 text-xs flex items-center justify-center space-x-1 bg-violet-500/10 border border-violet-500/20 text-[#a78bfa]";
+        btn.innerHTML = `
+          <i data-lucide="play" class="w-3.5 h-3.5"></i>
+          <span>Preview with FX</span>
+        `;
+        lucide.createIcons();
+      }
+    }
+
+    function updateFxParameters(moduleKey) {
+      const prefix = moduleKey === 'converter' ? 'conv' : 'snip';
+      const p = activePreviews[moduleKey];
+
+      const bypassAll = document.getElementById(`${prefix}-fx-bypass`).checked;
+
+      const reverbToggled = document.getElementById(`${prefix}-fx-reverb-toggle`).checked;
+      const delayToggled = document.getElementById(`${prefix}-fx-delay-toggle`).checked;
+      const eqToggled = document.getElementById(`${prefix}-fx-eq-toggle`).checked;
+      const compToggled = document.getElementById(`${prefix}-fx-comp-toggle`).checked;
+
+      // 1. Reverb parameters
+      const reverbMix = parseFloat(document.getElementById(`${prefix}-fx-reverb-mix`).value) / 100;
+      const reverbDecay = parseFloat(document.getElementById(`${prefix}-fx-reverb-decay`).value);
+      const reverbPreDelay = parseFloat(document.getElementById(`${prefix}-fx-reverb-predelay`).value) / 1000;
+
+      document.getElementById(`${prefix}-fx-reverb-mix-val`).innerText = `${Math.round(reverbMix * 100)}%`;
+      document.getElementById(`${prefix}-fx-reverb-decay-val`).innerText = `${reverbDecay.toFixed(1)}s`;
+      document.getElementById(`${prefix}-fx-reverb-predelay-val`).innerText = `${Math.round(reverbPreDelay * 1000)}ms`;
+
+      if (p.reverb) {
+        p.reverb.wet.value = (bypassAll || !reverbToggled) ? 0 : reverbMix;
+        if (p.reverb.decay !== reverbDecay) {
+          p.reverb.decay = reverbDecay;
+        }
+        p.reverb.preDelay = reverbPreDelay;
+      }
+
+      // 2. Delay parameters
+      const delayMix = parseFloat(document.getElementById(`${prefix}-fx-delay-mix`).value) / 100;
+      const delayTime = parseFloat(document.getElementById(`${prefix}-fx-delay-time`).value) / 1000;
+      const delayFeedback = parseFloat(document.getElementById(`${prefix}-fx-delay-feedback`).value) / 100;
+
+      document.getElementById(`${prefix}-fx-delay-mix-val`).innerText = `${Math.round(delayMix * 100)}%`;
+      document.getElementById(`${prefix}-fx-delay-time-val`).innerText = `${Math.round(delayTime * 1000)}ms`;
+      document.getElementById(`${prefix}-fx-delay-feedback-val`).innerText = `${Math.round(delayFeedback * 100)}%`;
+
+      if (p.delay) {
+        p.delay.wet.value = (bypassAll || !delayToggled) ? 0 : delayMix;
+        p.delay.delayTime.value = delayTime;
+        p.delay.feedback.value = delayFeedback;
+      }
+
+      // 3. EQ parameters
+      const eqBass = parseFloat(document.getElementById(`${prefix}-fx-eq-bass`).value);
+      const eqMid = parseFloat(document.getElementById(`${prefix}-fx-eq-mid`).value);
+      const eqTreble = parseFloat(document.getElementById(`${prefix}-fx-eq-treble`).value);
+
+      document.getElementById(`${prefix}-fx-eq-bass-val`).innerText = `${eqBass > 0 ? '+' : ''}${eqBass}dB`;
+      document.getElementById(`${prefix}-fx-eq-mid-val`).innerText = `${eqMid > 0 ? '+' : ''}${eqMid}dB`;
+      document.getElementById(`${prefix}-fx-eq-treble-val`).innerText = `${eqTreble > 0 ? '+' : ''}${eqTreble}dB`;
+
+      if (p.eq) {
+        p.eq.low.value = (bypassAll || !eqToggled) ? 0 : eqBass;
+        p.eq.mid.value = (bypassAll || !eqToggled) ? 0 : eqMid;
+        p.eq.high.value = (bypassAll || !eqToggled) ? 0 : eqTreble;
+      }
+
+      // 4. Compressor parameters
+      const compThresh = parseFloat(document.getElementById(`${prefix}-fx-comp-thresh`).value);
+      const compRatio = parseFloat(document.getElementById(`${prefix}-fx-comp-ratio`).value);
+      const compAttack = parseFloat(document.getElementById(`${prefix}-fx-comp-attack`).value) / 1000;
+      const compRelease = parseFloat(document.getElementById(`${prefix}-fx-comp-release`).value) / 1000;
+
+      document.getElementById(`${prefix}-fx-comp-thresh-val`).innerText = `${compThresh}dB`;
+      document.getElementById(`${prefix}-fx-comp-ratio-val`).innerText = `${compRatio}`;
+      document.getElementById(`${prefix}-fx-comp-attack-val`).innerText = `${Math.round(compAttack * 1000)}ms`;
+      document.getElementById(`${prefix}-fx-comp-release-val`).innerText = `${Math.round(compRelease * 1000)}ms`;
+
+      if (p.comp) {
+        if (bypassAll || !compToggled) {
+          p.comp.threshold.value = 0;
+          p.comp.ratio.value = 1;
+        } else {
+          p.comp.threshold.value = compThresh;
+          p.comp.ratio.value = compRatio;
+          p.comp.attack.value = compAttack;
+          p.comp.release.value = compRelease;
+        }
+      }
+
+      updateFxTextSummary(moduleKey);
+    }
+
+    function updateFxTextSummary(moduleKey) {
+      const prefix = moduleKey === 'converter' ? 'conv' : 'snip';
+      const bypassAll = document.getElementById(`${prefix}-fx-bypass`).checked;
+      const activeFxs = [];
+
+      if (!bypassAll) {
+        if (document.getElementById(`${prefix}-fx-reverb-toggle`).checked) activeFxs.push('Reverb');
+        if (document.getElementById(`${prefix}-fx-delay-toggle`).checked) activeFxs.push('Delay');
+        if (document.getElementById(`${prefix}-fx-eq-toggle`).checked) activeFxs.push('EQ');
+        if (document.getElementById(`${prefix}-fx-comp-toggle`).checked) activeFxs.push('Compressor');
+      }
+
+      const text = activeFxs.length > 0 ? `Active FX: ${activeFxs.join(', ')}` : 'Active FX: None';
+      const el = document.getElementById(`${prefix}-active-fx-summary`);
+      if (el) {
+        el.innerText = text;
+        if (activeFxs.length > 0) {
+          el.className = "text-xs text-[#a78bfa] font-semibold";
+        } else {
+          el.className = "text-xs text-white/40 font-semibold";
+        }
+      }
+    }
+
+    function startMeterVisualizer(moduleKey, meter) {
+      const prefix = moduleKey === 'converter' ? 'conv' : 'snip';
+      const canvas = document.getElementById(`fx-meter-canvas-${prefix}`);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      
+      function draw() {
+        if (!activePreviews[moduleKey].player) return;
+
+        const width = canvas.width = canvas.parentElement.clientWidth;
+        const height = canvas.height = canvas.parentElement.clientHeight || 12;
+
+        ctx.clearRect(0, 0, width, height);
+
+        const values = meter.getValue();
+        const dbL = Array.isArray(values) ? values[0] : values;
+        const dbR = Array.isArray(values) ? values[1] : values;
+
+        const valL = Math.max(0, (dbL + 60) / 60);
+        const valR = Math.max(0, (dbR + 60) / 60);
+
+        const barHeight = (height / 2) - 2;
+
+        let gradL = ctx.createLinearGradient(0, 0, width, 0);
+        gradL.addColorStop(0, '#2dd4bf');
+        gradL.addColorStop(0.7, '#fbbf24');
+        gradL.addColorStop(0.9, '#ef4444');
+        ctx.fillStyle = gradL;
+        ctx.fillRect(0, 1, width * valL, barHeight);
+
+        ctx.fillRect(0, barHeight + 3, width * valR, barHeight);
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = 1;
+        for (let p = 0.1; p < 1.0; p += 0.1) {
+          ctx.beginPath();
+          ctx.moveTo(width * p, 0);
+          ctx.lineTo(width * p, height);
+          ctx.stroke();
+        }
+
+        activePreviews[moduleKey].rAF = requestAnimationFrame(draw);
+      }
+
+      draw();
+    }
+
+    function onFxChange(el) {
+      const isConv = el.id.startsWith('conv');
+      const moduleKey = isConv ? 'converter' : 'snipper';
+      updateFxParameters(moduleKey);
+    }
+
+    function toggleBypassAll(el) {
+      const isConv = el.id.startsWith('conv');
+      const moduleKey = isConv ? 'converter' : 'snipper';
+      updateFxParameters(moduleKey);
+    }
+
+    // --- FFMPEG FILTER BUILDER ---
+    function buildFFmpegFilterArgs(prefix) {
+      const bypassAll = document.getElementById(`${prefix}-fx-bypass`).checked;
+      if (bypassAll) return [];
+
+      const filters = [];
+
+      if (document.getElementById(`${prefix}-fx-eq-toggle`).checked) {
+        const bass = parseFloat(document.getElementById(`${prefix}-fx-eq-bass`).value);
+        const mid = parseFloat(document.getElementById(`${prefix}-fx-eq-mid`).value);
+        const treble = parseFloat(document.getElementById(`${prefix}-fx-eq-treble`).value);
+        filters.push(`equalizer=f=100:width_type=o:w=1:g=${bass}`);
+        filters.push(`equalizer=f=1000:width_type=o:w=1:g=${mid}`);
+        filters.push(`equalizer=f=8000:width_type=o:w=1:g=${treble}`);
+      }
+
+      if (document.getElementById(`${prefix}-fx-comp-toggle`).checked) {
+        const thresh = parseFloat(document.getElementById(`${prefix}-fx-comp-thresh`).value);
+        const ratio = parseFloat(document.getElementById(`${prefix}-fx-comp-ratio`).value);
+        const attack = parseFloat(document.getElementById(`${prefix}-fx-comp-attack`).value);
+        const release = parseFloat(document.getElementById(`${prefix}-fx-comp-release`).value);
+        filters.push(`acompressor=threshold=${thresh}:ratio=${ratio}:attack=${attack}:release=${release}`);
+      }
+
+      if (document.getElementById(`${prefix}-fx-delay-toggle`).checked) {
+        const time = parseFloat(document.getElementById(`${prefix}-fx-delay-time`).value);
+        const feedback = parseFloat(document.getElementById(`${prefix}-fx-delay-feedback`).value) / 100;
+        filters.push(`aecho=0.8:0.8:${time}:${feedback}`);
+      }
+
+      if (document.getElementById(`${prefix}-fx-reverb-toggle`).checked) {
+        const mix = parseFloat(document.getElementById(`${prefix}-fx-reverb-mix`).value) / 100;
+        const decay = parseFloat(document.getElementById(`${prefix}-fx-reverb-decay`).value);
+        const predelay = parseFloat(document.getElementById(`${prefix}-fx-reverb-predelay`).value);
+        filters.push(`aecho=1.0:${0.5 * mix}:${predelay}:${0.2 * decay}`);
+        filters.push(`aecho=1.0:${0.3 * mix}:${predelay * 2}:${0.1 * decay}`);
+      }
+
+      if (filters.length > 0) {
+        return ['-af', filters.join(',')];
+      }
+      return [];
+    }
+
+    // Call setup on window load
+    window.addEventListener('DOMContentLoaded', () => {
+      setupCanvasEvents();
+      setupScrollbarEvents();
+      applyTheme(currentTheme);
+      updateUndoRedoButtons();
+      
+      // Global shortcut listener for Undo / Redo
+      window.addEventListener('keydown', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+          if (e.key.toLowerCase() === 'z') {
+            e.preventDefault();
+            if (e.shiftKey) {
+              redo();
+            } else {
+              undo();
+            }
+          } else if (e.key.toLowerCase() === 'y') {
+            e.preventDefault();
+            redo();
+          }
+        }
+      });
+    });
+
+    // DYNAMIC BYTES FORMATTER
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+  </script>
+</body>
+</html>
